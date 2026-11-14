@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Core Always Exists — an interactive explainer</title>
+<meta name="description" content="An interactive walkthrough of the proof that the core of an approval-based committee election is always non-empty, via payment systems, the Robin Hood operator and harmonic entropy.">
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" integrity="sha512-fHwaWebuwA7NSF5Qg/af4UeDx9XqUpYpOGgubo3yWu+b2IQR4UeQwbb42Ti7gVAjNtVoI/I9TEoYeu9omwcC6g==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" integrity="sha512-LQNxIMR5rXv7o+b1l8+N1EZMfhG7iFZ9HhnbJkTp4zjNr5Wvst75AqUeFDxeRUa7l5vEDyUiAip//r+EFLLCyA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" integrity="sha512-iWiuBS5nt6r60fCz26Nd0Zqe0nbk1ZTIQbl3Kv7kYsX+yKMUFHzjaH2+AnM6vp2Xs+gNmaBAVWJjSmuPw76Efg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<header class="wrap masthead">
+  <p class="eyebrow">Interactive explainer · Caltech Mathathon</p>
+  <h1>The core of an approval-based committee election is never empty</h1>
+  <p class="byline">
+    A walkthrough of Sections 2–6 of
+    <em>Existence of the Core in Approval-Based Committee Elections</em>,
+    by Patrick Becker, Matthias Greger and Dominik Peters
+    (<a href="https://arxiv.org/abs/2609.11912">arXiv:2609.11912v2</a>).
+  </p>
+  <p class="masthead-note">
+    Every diagram on this page is live, and every number in it is computed in your browser from the
+    definitions in the paper — nothing is hard-coded. The goal is to make one proof legible: why a
+    committee that no coalition wants to abandon must always exist.
+  </p>
+
+  <nav class="toc">
+    <ol>
+      <li><a href="#s-question">The question that was open</a></li>
+      <li><a href="#s-setup">Elections, committees, quotas</a></li>
+      <li><a href="#s-core">The core, and how it fails</a></li>
+      <li><a href="#s-coreplus">Core+: deviating by fractions</a></li>
+      <li><a href="#s-payments">Payment systems as certificates</a></li>
+      <li><a href="#s-pav">What PAV gets right, and wrong</a></li>
+      <li><a href="#s-robinhood">The Robin Hood operator</a></li>
+      <li><a href="#s-entropy">Harmonic entropy</a></li>
+      <li><a href="#s-rule">The harmonic entropy rule</a></li>
+      <li><a href="#s-chain">Why this proves existence</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<!-- ================================================================= -->
+<section id="s-question">
+  <h2><span class="num">1</span>The question that was open</h2>
+
+  <p>
+    A city has to pick 8 projects from a list of 10. Every resident marks the ones they like. Which 8
+    should win? Picking the most popular ones can leave a sizeable minority with nothing. What we want
+    is a committee that is <em>stable</em>: no group of voters, large enough to deserve a share of the
+    budget, can point to a different slate of proportional size that every one of them likes strictly
+    better.
+  </p>
+
+  <p>
+    That stability notion is the <strong>core</strong>, introduced for this setting by Aziz, Brill and
+    co-authors in 2017. The obvious question — does a committee in the core always exist? — stayed open
+    for years. Algorithms were known that got within a constant factor, or that worked in special
+    cases, but nobody could rule out an election in which every single committee is blocked by some
+    coalition.
+  </p>
+
+  <div class="summary">
+    <span class="tag">The result</span>
+    <p>
+      The core is always non-empty. Moreover a committee in the core can be computed in polynomial
+      time, and it satisfies a strictly stronger property the authors call <strong>core+</strong>.
+    </p>
+  </div>
+
+  <p>
+    The proof is not a direct construction, and it is not a fixed-point argument. It works by inventing
+    a quantity to maximise. The route has four moves, and this page walks through each in turn:
+  </p>
+
+  <ol class="body-list">
+    <li><strong>Strengthen</strong> the core to core+, by letting coalitions deviate fractionally. A
+      stronger property is harder to satisfy, but it has far better structure.</li>
+    <li><strong>Dualise.</strong> By LP duality, core+ is equivalent to the existence of a
+      <em>payment system</em> — a certificate you can check by inspection.</li>
+    <li><strong>Score.</strong> Invent an objective, <em>harmonic entropy</em>, that rewards balanced
+      payments and whose marginal gains line up exactly with a voter's unspent budget.</li>
+    <li><strong>Optimise.</strong> Show that any committee maximising that objective — even only
+      locally — must admit a valid certificate. Existence follows, because a maximum exists.</li>
+  </ol>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-setup">
+  <h2><span class="num">2</span>Elections, committees, quotas</h2>
+
+  <p>
+    There are \(n\) voters \(N = [n]\) and \(m\) candidates \(C = \{c_1,\dots,c_m\}\), and we must elect
+    a committee of \(k\) of them. Voter \(i\) submits a set \(A_i \subseteq C\) of approved candidates,
+    and her utility for a committee \(W\) is simply how many of her approvals got in:
+  </p>
+
+  <p>\[ u_i(W) \;=\; |A_i \cap W|. \]</p>
+
+  <p>
+    We write \(N_c = \{i \in N : c \in A_i\}\) for the supporters of candidate \(c\). One more quantity
+    does a lot of work: the <strong>quota</strong> \(q\), the number of voters needed to deserve one
+    candidate. The <em>Hare</em> quota is \(n/k\) and the <em>Droop</em> quota is \(n/(k+1)\); throughout,
+    the paper assumes
+  </p>
+
+  <p>\[ \frac{n}{k+1} \;<\; q \;\le\; \frac{n}{k}. \]</p>
+
+  <p>
+    That strict left-hand inequality looks like bookkeeping. It is not — the gap
+    \(\varepsilon = q - n/(k+1) > 0\) is exactly the slack that the final argument spends, and the whole
+    proof turns on its being positive.
+  </p>
+
+  <div id="fig-1-host"></div>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-core">
+  <h2><span class="num">3</span>The core, and how it fails</h2>
+
+  <p>
+    A non-empty coalition \(S \subseteq N\) <strong>blocks</strong> a committee \(W\) if it can afford
+    some proposal \(T \subseteq C\) — meaning \(|S| \ge q\,|T|\), the coalition is large enough to pay
+    for \(|T|\) candidates at \(q\) voters each — and every member strictly prefers it:
+  </p>
+
+  <p>\[ u_i(T) \;\ge\; u_i(W) + 1 \quad\text{for every } i \in S. \tag{1} \]</p>
+
+  <p>
+    \(W\) is in the <strong>core</strong> if no coalition blocks it. The definition is demanding in a
+    subtle way: the coalition gets to choose both who joins and what to propose, and those choices
+    interact. Deciding whether a <em>given</em> committee is in the core is already
+    coNP-complete, which is a fair warning about the structure one is dealing with.
+  </p>
+
+  <p>
+    The figure below is the paper's Figure 2, and it is the example to keep in mind for the rest of this
+    page. Voters <code>v1</code> and <code>v2</code> both approve <code>c1</code> and <code>c2</code>,
+    and each has one private candidate; <code>v3</code> and <code>v4</code> jointly approve a block of
+    six. With \(k=8\) and the Hare quota \(q = 4/8 = 1/2\), the committee
+    \(W = \{c_1,c_2,c_5,\dots,c_{10}\}\) looks reasonable and in fact maximises PAV — yet
+    \(\{v_1,v_2\}\) can afford \(\{c_1,c_2,c_3,c_4\}\), since \(|S| = 2 = q\cdot 4\), and both of them
+    go from utility 2 to utility 3.
+  </p>
+
+  <div id="fig-2-host"></div>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-coreplus">
+  <h2><span class="num">4</span>Core+: deviating by fractions</h2>
+
+  <p>
+    Here is the first real move. Instead of weakening the requirement to make it easier to satisfy, the
+    paper <em>strengthens</em> it — and the stronger property turns out to be the tractable one.
+  </p>
+
+  <p>
+    A <strong>fractional blocking coalition</strong> is a participation vector
+    \(y \in \mathbb{R}^n_{\ge 0}\setminus\{0\}\) and candidate quantities
+    \(z \in \mathbb{R}^m_{\ge 0}\) which the coalition can afford,
+    \(\sum_i y_i \ge q \sum_c z_c\), and under which every voter strictly gains:
+  </p>
+
+  <p>\[ \sum_{c \in A_i \setminus W} z_c \;+\; \sum_{c \in A_i \cap W} \min\{y_i, z_c\}
+         \;\ge\; \bigl(u_i(W)+1\bigr)\, y_i \quad\text{for every } i \in N. \tag{2} \]</p>
+
+  <p>
+    A committee satisfies <strong>core+</strong> if no such coalition exists. Setting
+    \(y \in \{0,1\}^n\) and \(z \in \{0,1\}^m\) recovers condition (1) exactly, so core+ implies the
+    core. Two relaxations have been layered on:
+  </p>
+
+  <ul class="body-list">
+    <li>Allowing \(z_c \in [0,1]\) lets the coalition propose a <em>fractional</em> committee, where a
+      voter draws utility \(z_c\) from an approved candidate \(c\).</li>
+    <li>Allowing \(y_i \in [0,1]\) lets a voter deviate <em>partially</em>. The \(y_i\) fraction of her
+      goes with the coalition while the rest stays with \(W\) — which is why approved
+      <em>winners</em> contribute only \(\min\{y_i, z_c\}\). The part of her that stayed behind is
+      already enjoying \(c\); she can collect at most the remaining \(y_i\) from it.</li>
+  </ul>
+
+  <p>
+    All the inequalities are homogeneous, so any feasible deviation can be rescaled into the unit cube —
+    try the sliders. The pay-off for this extra generality is structural: the set of blocking coalitions
+    is now described by linear inequalities, which is what makes duality available.
+  </p>
+
+  <div id="fig-3-host"></div>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-payments">
+  <h2><span class="num">5</span>Payment systems as certificates</h2>
+
+  <p>
+    Testing core+ directly means checking that a linear program is <em>infeasible</em>. Dualise it, and
+    infeasibility becomes the existence of an object you can hold in your hand. The paper's name for it
+    is a payment system, and it is best read as an accounting story.
+  </p>
+
+  <p>
+    Give every voter a budget of exactly 1. She splits it between payments \(p_{ic}\) to the committee
+    members she approves, and a <strong>reserve</strong> \(r_i\) she keeps back. (Voters never pay for
+    candidates they do not approve.) Four conditions:
+  </p>
+
+  <div class="claim">
+    <div class="claim-head">conditions (P1)–(P4)</div>
+    <p>
+      <strong>(P1)</strong> \(\;r_i + \sum_{c \in A_i \cap W} p_{ic} = 1\) for every voter — a unit
+      budget, fully allocated.
+    </p>
+    <p>
+      <strong>(P2)</strong> \(\;r_i \ge p_{ic}\) for every payment — no voter commits more to any single
+      committee member than she keeps for outside options. Every payment is <em>backed</em> by an
+      equally large reserve.
+    </p>
+    <p>
+      <strong>(P3)</strong> \(\;\sum_{i \in N_c} r_i < q\) for every loser \(c \notin W\) — the
+      supporters of an unelected candidate do not jointly hold a quota in reserve. Otherwise they would
+      have a justified complaint that \(c\) was left out.
+    </p>
+    <p>
+      <strong>(P4)</strong> \(\;\sum_{i \in N_c} p_{ic} \le q\) for every winner \(c \in W\) — no elected
+      candidate collects more than a quota. Otherwise its supporters were overcharged.
+    </p>
+  </div>
+
+  <p>
+    Write \(\mathcal{P}_{1234}(W)\) for the set of payment systems meeting all four. The equivalence is
+    exact:
+  </p>
+
+  <div class="claim">
+    <div class="claim-head">Theorem 3.2</div>
+    <p>
+      A committee \(W\) satisfies core+ if and only if \(\mathcal{P}_{1234}(W) \neq \emptyset\).
+    </p>
+  </div>
+
+  <p>
+    One direction is worth seeing by hand, because it shows what the conditions are for. Suppose
+    \(W\) has a certificate but is blocked by \(S\) with proposal \(T\), so \(|S| \ge q|T|\). Every
+    \(i \in S\) strictly improves, so each approved winner that \(T\) drops can be matched to a distinct
+    approved candidate in \(T\setminus W\), with at least one left over. Now imagine each voter paying
+    her usual \(p_{ic}\) to the candidates in \(T \cap W\), and her full reserve \(r_i\) to the new ones
+    — legitimate, because by (P2) the reserve is at least as large as any payment she was making. Each
+    voter in \(S\) therefore pays out at least her whole unit budget, so \(T\) collects at least
+    \(|S|\). But counting per candidate instead: winners in \(T\) take at most \(q\) each by (P4), and
+    losers at most \(\sum_{i\in N_c} r_i < q\) by (P3). So \(T\) collects strictly less than \(q|T|\).
+    Together, \(|S| < q|T|\) — contradicting affordability.
+  </p>
+
+  <p>
+    So the two "fairness" conditions pull in opposite directions, and that tension is the whole problem.
+    (P3) wants reserves <em>high</em>, so that no loser looks neglected. (P4) wants payments
+    <em>low</em>, so no winner is overpaid. Since (P1) ties payments and reserve together, you cannot
+    simply satisfy both. In the figure below, try to repair the (P4) violation on <code>W</code>: every
+    fix raises someone's reserve until <code>c3</code> or <code>c4</code> breaks (P3). On
+    <code>W&prime;</code> it can be done.
+  </p>
+
+  <div id="fig-4-host"></div>
+
+  <p>
+    Conditions (P1)–(P3) alone already buy a lot: any committee admitting such a system satisfies EJR+,
+    is \((\ell-1)\)-representative for every \(\ell\), and admits no disjoint core deviations
+    (Proposition 3.3). The difficulty is entirely in adding (P4).
+  </p>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-pav">
+  <h2><span class="num">6</span>What PAV gets right, and wrong</h2>
+
+  <p>
+    <strong>Proportional approval voting</strong> picks the committee maximising
+  </p>
+
+  <p>\[ \mathrm{PAV}(W) \;=\; \sum_{i \in N} H_{u_i(W)},
+        \qquad H_t = \sum_{j=1}^{t} \frac1j, \quad H_0 = 0. \]</p>
+
+  <p>
+    A voter's first approved winner is worth 1, the second \(1/2\), the third \(1/3\), and so on, so PAV
+    is reluctant to pile utility on voters who already have plenty.
+  </p>
+
+  <p>
+    PAV secretly <em>is</em> a payment rule. Give each voter the <strong>uniform payment system</strong>:
+    split her budget into \(u_i(W) + 1\) equal parts, one per approved winner plus the reserve, so
+  </p>
+
+  <p>\[ r_i \;=\; p_{ic} \;=\; \frac{1}{u_i(W)+1}. \]</p>
+
+  <p>
+    This satisfies (P1) and (P2) by construction. And now the key identity: a voter's reserve is
+    \(1/(u_i+1)\), which is exactly what one more approved winner would add to her harmonic score. So
+  </p>
+
+  <div class="claim">
+    <div class="claim-head">Theorem 4.1</div>
+    <p>
+      <strong>(a)</strong> For every loser \(c\),
+      \(\;\mathrm{PAV}(W \cup \{c\}) - \mathrm{PAV}(W) = \sum_{i \in N_c} r_i\).
+    </p>
+    <p>
+      <strong>(b)</strong> For every \(W'\) with \(|W'| = k+1\) there is some \(d \in W'\) with
+      \(\;\mathrm{PAV}(W') - \mathrm{PAV}(W' \setminus \{d\}) \le \tfrac{n}{k+1}\).
+    </p>
+    <p>
+      Hence a PAV-optimal committee's uniform payment system satisfies (P1)–(P3).
+    </p>
+  </div>
+
+  <p>
+    The <strong>swap argument</strong> in that last line is the template for everything that follows. If
+    some loser \(c\) violated (P3), gathering \(\sum_{i \in N_c} r_i \ge q\) in reserve, then by (a)
+    adding \(c\) would raise PAV by at least \(q\). By (b) we could then delete some candidate for at
+    most \(n/(k+1)\). Since \(q > n/(k+1)\), the net effect of this single swap is a strict improvement —
+    contradicting optimality. Part (b) is pure averaging: the total of all \(k+1\) deletion costs is at
+    most \(n\), so the cheapest is at most \(n/(k+1)\).
+  </p>
+
+  <p>
+    But PAV stops there, and the figure shows why. On \(W\), voters \(v_1\) and \(v_2\) each pay
+    \(1/3\) to both \(c_1\) and \(c_2\), so each of those candidates collects \(2/3 > q = 1/2\).
+    Condition (P4) fails: PAV <em>overcharges</em> \(v_1\) and \(v_2\). And indeed \(W\) is exactly the
+    committee that the coalition \(\{v_1, v_2\}\) blocked back in Section 3.
+  </p>
+
+  <div id="fig-5-host"></div>
+
+  <p>
+    Forcing (P4) to hold here would push \(r_1\) or \(r_2\) up to \(q\), breaking (P3) for \(c_3\) or
+    \(c_4\). The uniform payment system is simply too rigid: it gives every coordinate the same value.
+    Note also that PAV cannot even tell \(W\) apart from \(W' = \{c_1,c_2,c_3,c_5,\dots,c_9\}\) — the two
+    have identical PAV scores, but \(W'\) does admit a full certificate. What is needed is an objective
+    that sees the <em>shape</em> of a voter's payments, not just how many winners she approves.
+  </p>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-robinhood">
+  <h2><span class="num">7</span>The Robin Hood operator</h2>
+
+  <p>
+    By (P1) and (P2), a voter's reserve and payments form a probability distribution in which the
+    reserve is the largest coordinate. So we need a function on distributions that rewards balance,
+    agrees with harmonic numbers at the uniform distribution, and — crucially — preserves the
+    marginal-gain identity that made the PAV swap argument work.
+  </p>
+
+  <p>
+    The construction starts with an operation that adds coordinates to a distribution by levelling down
+    the tall ones. For \(x \in \Delta_d\) and \(\ell \ge 1\), the <strong>Robin Hood operator</strong> is
+  </p>
+
+  <p>\[ \rho_\ell(x) \;=\; \bigl(\min\{x_1,t\},\dots,\min\{x_d,t\},\underbrace{t,\dots,t}_{\ell}\bigr), \]</p>
+
+  <p>
+    where the <em>water level</em> \(t\) is the unique solution of
+  </p>
+
+  <p>\[ \ell \cdot t \;=\; \sum_{j=1}^{d}(x_j - t)^{+}. \]</p>
+
+  <p>
+    In words: pick the height \(t\) at which the mass skimmed off everything above \(t\) is exactly
+    enough to fill \(\ell\) brand-new coordinates up to \(t\) as well. Total mass is preserved, and no
+    existing coordinate ever increases.
+  </p>
+
+  <p>
+    Two facts make it the right operation. First, \(\rho\) <strong>preserves uniformity</strong>:
+    \(\rho(\tfrac1d,\dots,\tfrac1d) = (\tfrac{1}{d+1},\dots,\tfrac{1}{d+1})\) — precisely what the
+    uniform payment system does when a candidate is added. Second, repeatedly applying \(\rho\) to any
+    strictly positive distribution <strong>reaches the uniform distribution in finitely many steps</strong>.
+    The reason is neat: whenever \(\rho\) changes a coordinate it becomes a largest coordinate, and a
+    largest coordinate stays largest; after enough steps the new coordinates are smaller than any
+    original one, so every original must have been levelled at some point — and so all of them are
+    maximal.
+  </p>
+
+  <p>
+    The water level also has a closed form that makes it computable, and which the figure uses
+    (Lemma 5.1):
+  </p>
+
+  <p>\[ t_\ell(x) \;=\; \max_{\emptyset \neq S \subseteq [d]} \frac{\sum_{j \in S} x_j}{|S| + \ell}. \]</p>
+
+  <div id="fig-6-host"></div>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-entropy">
+  <h2><span class="num">8</span>Harmonic entropy</h2>
+
+  <p>
+    Now define, for strictly positive \(x \in \Delta_d\),
+  </p>
+
+  <p>\[ F(x) \;=\;
+      \begin{cases}
+        H_{d-1} & \text{if } x = (\tfrac1d,\dots,\tfrac1d),\\[4pt]
+        F(\rho(x)) - x_{\max} & \text{otherwise,}
+      \end{cases} \]</p>
+
+  <p>
+    extended to distributions with zeros by deleting them. This is well defined exactly because
+    \(\rho\) drives everything to uniform in finitely many steps — the recursion always bottoms out.
+    Rearranged, the definition <em>is</em> the marginal-gain identity we were chasing:
+  </p>
+
+  <p>\[ F(\rho(x)) \;=\; F(x) + x_{\max} \qquad\text{for all } x \in \Delta_d. \tag{5} \]</p>
+
+  <p>
+    Introducing a new coordinate through \(\rho\) increases \(F\) by the largest coordinate of the
+    original distribution — and by (P2) that largest coordinate is the voter's reserve. This is the
+    non-uniform generalisation of Theorem 4.1(a), and it is the hinge of the whole proof.
+  </p>
+
+  <p>
+    \(F\) is also <strong>continuous, concave, symmetric, and invariant under adding zero
+    coordinates</strong> (Proposition 5.2). Concavity plus symmetry means \(F\) is maximised at the
+    uniform distribution, where it equals \(H_{d-1}\) — so harmonic entropy recovers the PAV score on
+    uniform payments, and scores every other shape strictly lower. There is an equivalent series form,
+  </p>
+
+  <p>\[ F(x) \;=\; \sum_{\ell=0}^{\infty}\Bigl(\frac{1}{\ell+1} - t_\ell(x)\Bigr), \tag{6} \]</p>
+
+  <p>
+    which is what makes \(F\) differentiable enough to optimise numerically — the diagram below uses the
+    recursion and the series side by side as a consistency check.
+  </p>
+
+  <blockquote>
+    The name is earned. Replacing the sum over integer \(\ell\) in (6) with an integral over continuous
+    added capacity turns \(F\) into Shannon entropy, \(-\sum_j x_j \ln x_j\), and \(H_{d-1}\) into
+    \(\ln d\). Harmonic entropy is a discrete analogue of Shannon entropy — one whose marginal gains are
+    exact reciprocals, which is precisely what PAV needs.
+  </blockquote>
+
+  <div id="fig-7-host"></div>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-rule">
+  <h2><span class="num">9</span>The harmonic entropy rule</h2>
+
+  <p>
+    Everything is now in place. For a committee \(W\), optimise jointly over all payment systems that
+    satisfy the easy conditions and the cap:
+  </p>
+
+  <p>\[ V(W) \;=\; \max_{(r,p)\,\in\,\mathcal{P}_{124}(W)} \;\sum_{i \in N} F(r_i, p_i). \]</p>
+
+  <p>
+    The maximum is attained: \(\mathcal{P}_{124}(W)\) is non-empty (take \(r_i = 1\) and no payments),
+    compact and convex, and \(F\) is continuous. The <strong>harmonic entropy rule</strong> selects the
+    committees maximising \(V\). Note what has happened to (P3): it is not a constraint here. It is the
+    thing we are going to <em>deduce</em>.
+  </p>
+
+  <h3>Adding a candidate</h3>
+
+  <p>
+    If \(W\) has an optimal payment system under which some loser \(c\) hoards a quota of reserve, then
+    electing \(c\) is worth at least a quota of objective:
+  </p>
+
+  <div class="claim">
+    <div class="claim-head">Theorem 6.2</div>
+    <p>
+      Let \((r,p) \in \mathcal{P}_{124}(W)\) be optimal. If some \(c \notin W\) has
+      \(\sum_{i \in N_c} r_i \ge q\), then \(V(W \cup \{c\}) \ge V(W) + q\).
+    </p>
+  </div>
+
+  <p>
+    The proof applies \(\rho\) to each supporter's distribution, reading the new coordinate as her
+    payment for \(c\). Conditions (P1) and (P2) survive — \(\rho\) outputs a distribution, and the
+    reserve stays a largest coordinate — and (P4) survives for the old winners because \(\rho\) never
+    raises a coordinate. By identity (5), the objective rises by exactly \(\sum_{i \in N_c} r_i\). That
+    might overshoot the cap on the <em>new</em> candidate \(c\), so one takes a convex combination with
+    the original system, weighted by \(\lambda = q / \sum_{i \in N_c} r_i \in (0,1]\); concavity of \(F\)
+    then delivers a gain of at least \(\lambda \cdot \sum_{i\in N_c} r_i = q\).
+  </p>
+
+  <h3>Deleting a candidate</h3>
+
+  <div class="claim">
+    <div class="claim-head">Theorem 6.3</div>
+    <p>
+      For any committee \(W\) with \(|W| \ge k+1\) there exists \(d \in W\) with
+      \(\;V(W \setminus \{d\}) \ge V(W) - \tfrac{n}{|W|}\).
+    </p>
+  </div>
+
+  <p>
+    This is the harder half. The averaging trick needs payments that have been pushed as high as the cap
+    allows, so the paper first <strong>de-reserves</strong>: starting from an optimal system, every voter
+    with leftover reserve who approves an unsaturated winner pours that reserve into her payments, at
+    unit rate, until either her reserve is exhausted or the candidate hits \(q\). What survives is a
+    system in which any remaining reserve belongs to voters all of whose approved winners are saturated.
+    Lemma 6.4 then shows this can be arranged so that, for an unsaturated \(d\), each supporter's
+    payment to \(d\) is her largest, and
+  </p>
+
+  <p>\[ F(\hat r_i, \hat p_i) \;=\; F(r_i, p_i) - \hat p_{id}. \]</p>
+
+  <p>
+    Because total payments are at most \(n\), the candidate \(d\) with the smallest total receives at
+    most \(n/|W|\), which is below \(q\) — so \(d\) is unsaturated, and deleting it costs at most that.
+    The witness system for \(W \setminus \{d\}\) simply relabels each supporter's payment to \(d\) as her
+    new reserve, which is legal precisely because of Lemma 6.4(a).
+  </p>
+
+  <h3>Putting the two together</h3>
+
+  <div class="claim">
+    <div class="claim-head">Theorem 6.5</div>
+    <p>
+      Let \(\varepsilon = q - \tfrac{n}{k+1} > 0\), and let \(W \in \mathcal{W}_k\) be such that
+      \(V(W) > V(W \cup \{c\} \setminus \{d\}) - \varepsilon\) for all \(d \in W\) and
+      \(c \notin W\). Then \(W\) satisfies core+. In particular every committee selected by the
+      harmonic entropy rule satisfies core+.
+    </p>
+  </div>
+
+  <p>
+    Contrapositive. If \(W\) fails core+ then by Theorem 3.2 its optimal system violates (P3), so some
+    loser \(c\) has \(\sum_{i\in N_c} r_i \ge q\). Theorem 6.2 gives
+    \(V(W\cup\{c\}) \ge V(W) + q\); Theorem 6.3, applied to the now \((k+1)\)-sized committee, finds a
+    \(d\) with \(V(W\cup\{c\}\setminus\{d\}) \ge V(W\cup\{c\}) - \tfrac{n}{k+1}\). Chaining them,
+  </p>
+
+  <p>\[ V(W \cup \{c\} \setminus \{d\}) \;\ge\; V(W) + q - \frac{n}{k+1} \;=\; V(W) + \varepsilon. \]</p>
+
+  <p>
+    So a single swap improves \(V\) by at least \(\varepsilon\) — and \(W\) was not even an approximate
+    local optimum. Walk the numbers below on the very committee that failed the core in Section 3.
+  </p>
+
+  <div id="fig-8-host"></div>
+
+  <p>
+    Because only <em>local</em> optimality is needed, this also yields the polynomial-time algorithm of
+    Section 7: hill-climb on \(V\) by single-candidate swaps, and stop when no swap gains \(\varepsilon\).
+    Finding a <em>global</em> maximiser is NP-hard (Proposition 6.9), but one never needs to.
+  </p>
+
+  <p>
+    Finally, here is the whole instance at once: all 45 committees of size 8, scored both ways. Maximising
+    \(V\) lands in the core every time; maximising PAV does not.
+  </p>
+
+  <div id="fig-9-host"></div>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-chain">
+  <h2><span class="num">10</span>Why this proves existence</h2>
+
+  <p>
+    Read the chain backwards and the existence proof is three lines.
+  </p>
+
+  <ol class="body-list">
+    <li>The objective \(V\) is a real-valued function on the finite set \(\mathcal{W}_k\) of committees,
+      so it <strong>attains a maximum</strong>. Nothing deep — just finiteness.</li>
+    <li>By Theorem 6.5 any maximiser — indeed any committee no single swap improves by \(\varepsilon\) —
+      <strong>satisfies core+</strong>.</li>
+    <li>Core+ implies the core. Therefore the core is non-empty.</li>
+  </ol>
+
+  <div class="summary">
+    <span class="tag">The shape of the argument</span>
+    <p>
+      The core is a statement about what <em>cannot</em> happen, quantified over exponentially many
+      coalitions, and it is coNP-complete to verify. Strengthening it to core+ makes it a statement about
+      an LP being infeasible; duality turns that into the <em>existence</em> of a certificate; and
+      harmonic entropy is engineered so that the certificate falls out of an optimality condition. The
+      hard part was not the optimisation — it was finding the objective whose marginal gains are exactly
+      a voter's unspent budget.
+    </p>
+  </div>
+
+  <p>
+    What the paper does after this point, and this page does not cover: Section 7 turns local search into
+    a polynomial-time algorithm in the input size and \(1/\varepsilon\); Section 8 extends everything to
+    the Droop quota, where \(\varepsilon \to 0\) and the above slack argument needs more care; and the
+    appendices establish the properties of \(F\) used here, the equivalence in Theorem 3.2, and the
+    relationship to Lindahl priceability, EJR+ and Pareto optimality.
+  </p>
+</section>
+
+<section class="footnotes">
+  <h2>Notes on this page</h2>
+  <ol>
+    <li>
+      All quantities are computed live from the definitions, in
+      <code>docs/js/math-core.js</code>, <code>election.js</code> and <code>payments.js</code>. The
+      implementation is checked against the paper's own worked examples — the water levels
+      \(5/18, 5/24, 1/6\) of Figure 3, the value \(F(1/2,1/3,1/6) = 467/360\), the identity
+      \(F(\text{uniform}) = H_{d-1}\), the PAV tie between \(W\) and \(W'\), and the explicit
+      certificate the paper gives for \(W'\). Run <code>npm test</code> to re-verify.
+    </li>
+    <li>
+      \(V(W)\) is a concave maximisation over a polytope. It is solved here by projected gradient ascent,
+      with the projection onto (P1), (P2) and (P4) computed by Dykstra's alternating-projection
+      algorithm. Values are therefore numerical, not exact; Figures 8 and 9 read from
+      <code>docs/data/landscape.json</code>, precomputed by <code>tools/precompute.mjs</code> using the
+      same code this page ships.
+    </li>
+    <li>
+      Equation and theorem numbers follow arXiv:2609.11912v2. The page covers Sections 2–6; Sections 7–9
+      and the appendices are summarised only in passing.
+    </li>
+    <li>
+      Layout and typography follow the editorial style of
+      <a href="https://www.sophielwang.com/cues">sophielwang.com/cues</a>.
+    </li>
+  </ol>
+</section>
+
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

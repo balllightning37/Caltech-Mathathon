@@ -1,0 +1,17 @@
+{
+  "name": "caltech-mathathon-core-explainer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Interactive explainer for 'Existence of the Core in Approval-Based Committee Elections' (Becker, Greger & Peters, arXiv:2609.11912v2)",
+  "scripts": {
+    "test": "node tests/math-core.test.mjs && node tests/election.test.mjs && node tests/render.test.mjs",
+    "test:slow": "node tests/theorem65.test.mjs",
+    "precompute": "node tools/precompute.mjs",
+    "serve": "node tools/serve.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  },
+  "license": "MIT"
+}
