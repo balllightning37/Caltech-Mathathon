@@ -1,0 +1,54 @@
+name: Deploy explainer to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it part-way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # The site is plain static files, so this job only guards against
+  # publishing something broken. It does not gate the deploy.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # `enablement: true` turns Pages on and switches the source to
+      # "GitHub Actions", so no repository setting has to be changed by hand.
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      # docs/ is the whole site: no build step, no dependencies.
+      - name: Upload docs/
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
