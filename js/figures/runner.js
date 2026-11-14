@@ -11,10 +11,9 @@ import {
   h, s, clear, canvas, figure, button, segmented, legend, pill,
   frac, dec, tooltip, hoverable, bar,
 } from '../ui.js';
-import { makeInstance, findCoreViolation, utilities, blocks } from '../election.js';
+import { makeInstance, findCoreViolation, utilities } from '../election.js';
 import {
-  fastCore, preprocess, truncationLevel, neighbourhoodSize,
-  reserveBehind, collected, verify,
+  fastCore, preprocess, neighbourhoodSize, reserveBehind, verify,
 } from '../core-algo.js';
 
 const MAX_N = 10;
