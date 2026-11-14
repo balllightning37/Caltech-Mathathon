@@ -11,7 +11,12 @@ Two tabs:
 | Tab | Page | Covers |
 | --- | --- | --- |
 | Why the core exists | [`index.html`](index.html) | Sections 2-6: the existence proof |
-| Computing one | [`algorithm.html`](algorithm.html) | The algorithm, and a faster variant of it |
+| Computing one | [`algorithm.html`](algorithm.html) | The algorithm, a faster variant, and a runner you can drive |
+
+The second tab ends with a **fully interactive runner**: set the number of voters, candidates and
+seats, drag candidates onto voters to build the approval profile, read off the dual (payment)
+programme that profile induces, then step the algorithm at your chosen speed and watch a valid
+payment system being assembled — which is what certifies the final committee as core-stable.
 
 ## What this covers
 
@@ -93,6 +98,7 @@ js/
   election.js               instances, utilities, PAV, exhaustive core check
   payments.js               payment systems, (P1)-(P4), and the V(W) optimiser
   core-algo.js              the carried-target algorithm, for the browser
+  figures/runner.js         the interactive end-to-end runner
   ballot.js                 shared approval-profile renderer
   ui.js                     SVG/DOM helpers, controls, figure scaffold
   figures/                  one module per group of figures

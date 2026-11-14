@@ -139,6 +139,8 @@ export function dereserve(inst, X, reserves, payments) {
       active: active.slice(),
       unsaturated: [...unsat],
       reserves: r.slice(),
+      // A snapshot, so a step-through can animate the payments filling up.
+      payments: p.map((mp) => new Map(mp)),
     });
   }
 

@@ -3,6 +3,7 @@
 import {
   mountAlgorithmFigure, mountDereserveFigure, mountCostFigure,
 } from './figures/algofig.js';
+import { mountRunnerFigure } from './figures/runner.js';
 
 function renderMath() {
   if (typeof window.renderMathInElement !== 'function') return;
@@ -32,6 +33,7 @@ function mount(id, fn) {
 mount('fig-a1-host', mountAlgorithmFigure);
 mount('fig-a2-host', mountDereserveFigure);
 mount('fig-a3-host', mountCostFigure);
+mount('fig-a4-host', mountRunnerFigure);
 
 if (document.readyState === 'complete') renderMath();
 else window.addEventListener('load', renderMath);

@@ -271,6 +271,28 @@
   </p>
 </section>
 
+<section id="s-runner">
+  <h2><span class="num">8</span>Run it yourself</h2>
+
+  <p>
+    Everything above, on an instance of your own. Set the number of voters, candidates and seats,
+    then drag candidates onto voters to build the approval profile. The panel underneath writes out
+    the dual programme that profile induces — the payment variables and the four families of
+    constraints — and the runner then walks the repair loop at whatever pace you choose.
+  </p>
+
+  <p>
+    The thing worth watching is the pills. \((P1)\), \((P2)\) and \((P4)\) stay satisfied from the
+    very first step, because every payment system the algorithm ever touches is feasible for them.
+    Only \((P3)\) is in doubt, and the whole loop exists to repair it. The moment every loser drops
+    below the quota, the payment system in hand <em>is</em> the certificate — and the last panel
+    takes that certificate back to the core by brute force, checking all \(2^m-1\) proposals
+    independently of anything the algorithm claimed.
+  </p>
+
+  <div id="fig-a4-host"></div>
+</section>
+
 <section class="footnotes">
   <h2>Notes on this page</h2>
   <ol>
