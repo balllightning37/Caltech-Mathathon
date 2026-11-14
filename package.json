@@ -5,10 +5,14 @@
   "type": "module",
   "description": "Interactive explainer for 'Existence of the Core in Approval-Based Committee Elections' (Becker, Greger & Peters, arXiv:2609.11912v2)",
   "scripts": {
-    "test": "node tests/math-core.test.mjs && node tests/election.test.mjs && node tests/render.test.mjs",
+    "test": "node tests/math-core.test.mjs && node tests/optimiser.test.mjs && node tests/election.test.mjs && node tests/core-algo.test.mjs && node tests/render.test.mjs && node tests/render-algorithm.test.mjs",
     "test:slow": "node tests/theorem65.test.mjs",
     "precompute": "node tools/precompute.mjs",
-    "serve": "node tools/serve.mjs"
+    "serve": "node tools/serve.mjs",
+    "test:py": "python tests/verify_core_algorithm.py",
+    "test:py:full": "python tests/verify_core_algorithm.py --full",
+    "stress:py": "python tests/stress_core_algorithm.py",
+    "bench:py": "python tests/bench_core_algorithm.py"
   },
   "devDependencies": {
     "jsdom": "^25.0.1"

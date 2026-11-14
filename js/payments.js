@@ -11,7 +11,9 @@
  *   (P4) sum_{i in N_c} p_ic <= q   for winners c in W
  */
 
-import { harmonicEntropy, harmonicEntropyGradient, dropZeros } from './math-core.js';
+import {
+  harmonicEntropy, harmonicEntropyGradient, harmonicEntropySeries, dropZeros,
+} from './math-core.js';
 import { approvedWinners } from './election.js';
 
 const TOL = 1e-7;
@@ -229,7 +231,18 @@ function projectP124(x0, inst, W, shape, lay, iters = 200) {
  * in P124(W). Projected gradient ascent with backtracking line search,
  * started from both the uniform system and the all-reserve system.
  */
-export function harmonicEntropyValue(inst, W, { iters = 300 } = {}) {
+/**
+ * `truncation` evaluates the truncated objective F_L instead of F. It exists
+ * so this optimiser can be compared directly against an exact rational LP
+ * for V_L (see tests/optimiser.test.mjs); leave it unset for F itself.
+ *
+ * `reservePenalty` subtracts mu * sum_i r_i from the objective, which
+ * approximates the "minimum total reserve among maximisers" tie-break that
+ * Lemma 6.4 needs. Keep mu tiny.
+ */
+export function harmonicEntropyValue(
+  inst, W, { iters = 300, truncation = null, reservePenalty = 0 } = {}
+) {
   const shape = paymentShape(inst, W);
   const lay = layout(shape);
 
@@ -239,6 +252,28 @@ export function harmonicEntropyValue(inst, W, { iters = 300 } = {}) {
     shape.forEach((cs, i) => { r[i] = 1; p[i] = new Map(cs.map((c) => [c, 0])); });
     starts.push(toVector({ r, p, shape }, shape, lay));
   }
+  // F is concave but not smooth, so projected gradient can stall at a kink.
+  // A few deterministic perturbed restarts recover the optimum in practice.
+  {
+    let seed = 0x2f6e2b1;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    for (let s = 0; s < 6; s++) {
+      const r = [], p = [];
+      shape.forEach((cs, i) => {
+        const w = [rand() + 0.15, ...cs.map(() => rand() + 0.15)];
+        const tot = w.reduce((a, b) => a + b, 0);
+        const v = w.map((z) => z / tot);
+        const mi = v.indexOf(Math.max(...v));
+        [v[0], v[mi]] = [v[mi], v[0]];
+        r[i] = v[0];
+        p[i] = new Map(cs.map((c, t) => [c, v[t + 1]]));
+      });
+      starts.push(toVector({ r, p, shape }, shape, lay));
+    }
+  }
 
   const blockOf = (x, i, cs) => {
     const d = [];
@@ -246,9 +281,16 @@ export function harmonicEntropyValue(inst, W, { iters = 300 } = {}) {
     return d;
   };
 
+  const scoreOf = truncation
+    ? (d) => harmonicEntropySeries(d, truncation)
+    : (d) => harmonicEntropy(d).value;
+
   const objective = (x) => {
     let s = 0;
-    shape.forEach((cs, i) => { s += harmonicEntropy(dropZeros(blockOf(x, i, cs))).value; });
+    shape.forEach((cs, i) => { s += scoreOf(dropZeros(blockOf(x, i, cs))); });
+    if (reservePenalty) {
+      shape.forEach((cs, i) => { s -= reservePenalty * x[lay.offset[i]]; });
+    }
     return s;
   };
 
@@ -258,9 +300,12 @@ export function harmonicEntropyValue(inst, W, { iters = 300 } = {}) {
       const d = blockOf(x, i, cs);
       // Gradient of the series form, restricted to the positive support.
       const keep = d.map((v, t) => [v, t]).filter(([v]) => v > 1e-12);
-      const gsub = harmonicEntropyGradient(keep.map(([v]) => v), 300);
+      const gsub = harmonicEntropyGradient(keep.map(([v]) => v), truncation || 300);
       keep.forEach(([, t], s) => { g[lay.offset[i] + t] = gsub[s]; });
     });
+    if (reservePenalty) {
+      shape.forEach((cs, i) => { g[lay.offset[i]] -= reservePenalty; });
+    }
     return g;
   };
 
@@ -275,8 +320,8 @@ export function harmonicEntropyValue(inst, W, { iters = 300 } = {}) {
       let improved = false;
       for (let ls = 0; ls < 26; ls++) {
         const y = new Float64Array(lay.size);
-        // F is a sum of -t_l terms, so ascent moves along -g.
-        for (let j = 0; j < lay.size; j++) y[j] = x[j] - step * g[j];
+        // `gradient` returns grad(sum_i F), so ascent moves along +g.
+        for (let j = 0; j < lay.size; j++) y[j] = x[j] + step * g[j];
         const yp = projectP124(y, inst, W, shape, lay, 120);
         const v = objective(yp);
         if (v > val + 1e-13) { x = yp; val = v; improved = true; step *= 1.35; break; }

@@ -6,6 +6,13 @@ by Patrick Becker, Matthias Greger and Dominik Peters
 
 **Live site:** https://balllightning37.github.io/Caltech-Mathathon/
 
+Two tabs:
+
+| Tab | Page | Covers |
+| --- | --- | --- |
+| Why the core exists | [`index.html`](index.html) | Sections 2-6: the existence proof |
+| Computing one | [`algorithm.html`](algorithm.html) | The algorithm, and a faster variant of it |
+
 ## What this covers
 
 Sections 2–6 of the paper: the proof that **core+ is always satisfiable**, and hence that the core
@@ -55,10 +62,20 @@ npm run serve        # or: python -m http.server 8080
 `npm` is only needed to run the test suite:
 
 ```bash
-npm install          # jsdom, for the headless render test
+npm install          # jsdom, for the headless render tests
 npm test             # verifies the maths against the paper and renders every figure
 npm run test:slow    # enumerates all 45 committees to confirm Theorem 6.5
 npm run precompute   # regenerates data/landscape.json
+```
+
+The exact reference implementation of the algorithm is in Python and needs `z3`:
+
+```bash
+pip install z3-solver
+npm run test:py        # independent validation sweep
+npm run test:py:full   # adds exhaustive small-profile sweeps
+npm run stress:py      # adversarial instances
+npm run bench:py       # measures the speedup
 ```
 
 ## Layout
@@ -66,7 +83,8 @@ npm run precompute   # regenerates data/landscape.json
 GitHub Pages serves the repository root, so the site lives there directly.
 
 ```
-index.html                  the explainer
+index.html                  the existence explainer (tab 1)
+algorithm.html              the algorithm explainer (tab 2)
 .nojekyll                   serve files verbatim, without Jekyll
 css/style.css               design tokens and layout
 data/landscape.json         precomputed V(W) for all 45 committees
@@ -74,11 +92,14 @@ js/
   math-core.js              harmonic numbers, water levels, Robin Hood, F and its gradient
   election.js               instances, utilities, PAV, exhaustive core check
   payments.js               payment systems, (P1)-(P4), and the V(W) optimiser
+  core-algo.js              the carried-target algorithm, for the browser
   ballot.js                 shared approval-profile renderer
   ui.js                     SVG/DOM helpers, controls, figure scaffold
   figures/                  one module per group of figures
-  main.js                   entry point
-tests/                      math, election and headless render tests
+  main.js, algo-main.js     entry point per tab
+core_algorithm.py           exact rational reference implementation (z3)
+core-algorithm-explained.md its prose companion
+tests/                      math, election, algorithm and render tests
 tools/precompute.mjs        regenerates data/landscape.json
 tools/serve.mjs             local static server
 ```
@@ -102,7 +123,23 @@ Theorem 6.5 empirically: every `V`-maximising committee is in the core, while on
 committee is not.
 
 `V(W)` is a concave maximisation over a polytope, solved by projected gradient ascent with Dykstra's
-alternating-projection algorithm for the constraints. Those values are numerical rather than exact.
+alternating-projection algorithm for the constraints. Those values are numerical rather than exact, but
+`tests/optimiser.test.mjs` pins the solver against the exact rational LP in `core_algorithm.py` and they
+agree to about 1e-13.
+
+### The algorithm
+
+`core_algorithm.py` is the exact reference: it solves the payment LP in rational arithmetic with `z3`,
+so there are no floating-point tolerances. The approach is **self-certifying** -- it returns a payment
+system, and (P1)-(P4) are checkable by direct arithmetic, so by Theorem 3.2 a verified certificate
+proves core+ membership. A mistake in the complexity analysis would therefore surface as an infeasible
+LP or an exceeded round bound, never as a wrong committee.
+
+It was validated on 2,728 instances (including every profile on 3 candidates x 3 voters and on
+4 candidates x 2 voters, at every committee size) plus 200 instances built to defeat the degree
+preprocessing, with every certificate re-checked exactly and every committee independently confirmed
+in the ordinary core by exhaustive enumeration. See `tests/verify_core_algorithm.py` and
+`tests/stress_core_algorithm.py`.
 
 ## Credits
 

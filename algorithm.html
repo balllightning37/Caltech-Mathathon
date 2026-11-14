@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Computing a Core Committee — an interactive explainer</title>
+<meta name="description" content="How to actually compute a core-stable approval committee: the paper's local search, and a faster carried-target algorithm that uses one LP per repair round.">
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" integrity="sha512-fHwaWebuwA7NSF5Qg/af4UeDx9XqUpYpOGgubo3yWu+b2IQR4UeQwbb42Ti7gVAjNtVoI/I9TEoYeu9omwcC6g==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" integrity="sha512-LQNxIMR5rXv7o+b1l8+N1EZMfhG7iFZ9HhnbJkTp4zjNr5Wvst75AqUeFDxeRUa7l5vEDyUiAip//r+EFLLCyA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" integrity="sha512-iWiuBS5nt6r60fCz26Nd0Zqe0nbk1ZTIQbl3Kv7kYsX+yKMUFHzjaH2+AnM6vp2Xs+gNmaBAVWJjSmuPw76Efg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<header class="wrap masthead">
+  <p class="eyebrow">Interactive explainer · Caltech Mathathon</p>
+  <h1>Computing a core committee</h1>
+  <p class="byline">
+    The algorithmic companion to
+    <em>Existence of the Core in Approval-Based Committee Elections</em>
+    (<a href="https://arxiv.org/abs/2609.11912">arXiv:2609.11912v2</a>), and a faster variant of it.
+  </p>
+  <nav class="tabs">
+    <a href="index.html">Why the core exists</a>
+    <a href="algorithm.html" aria-current="page">Computing one</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<section id="s-intro" style="padding-top:34px">
+  <h2><span class="num">1</span>From existence to an algorithm</h2>
+
+  <p>
+    The <a href="index.html">other tab</a> shows that a core-stable committee always exists, by
+    exhibiting an objective — harmonic entropy — whose maximisers must admit a valid payment
+    certificate. That proof is already constructive in a useful way: it needs only
+    <em>local</em> optimality. A committee that no single-candidate swap improves by more than
+  </p>
+
+  <p>\[ \delta \;=\; q - \frac{n}{k+1} \;>\; 0 \]</p>
+
+  <p>
+    must satisfy core+. So hill-climbing on the objective is enough, and that is the paper's
+    algorithm. This page walks through it, and through a faster rearrangement of the same proof.
+  </p>
+
+  <div class="summary">
+    <span class="tag">What to take away</span>
+    <p>
+      The proof tells you not just that a good swap exists, but <em>which</em> one: the losing
+      candidate that violates (P3). Following that hint turns a scan of \(k(m-k)\) neighbours into a
+      single step, and a sharper accounting of the truncation error shrinks each linear program as
+      well.
+    </p>
+  </div>
+</section>
+
+<section id="s-paper">
+  <h2><span class="num">2</span>The paper's local search</h2>
+
+  <p>
+    Start from any committee of size \(k\) and repeat: solve a linear program for the best payment
+    system, then try every swap of one winner for one loser, solving another LP for each, and take any
+    swap that improves the objective by at least \(\delta/2\). Stop when none does.
+  </p>
+
+  <p>
+    Correctness comes straight from the two halves of the existence proof. If some loser \(c\) holds a
+    full quota of reserve, adding it gains at least \(q\); some member of the enlarged committee can
+    then be dropped for at most \(n/(k+1)\); and \(q > n/(k+1)\), so that one swap gains at least
+    \(\delta\). Contrapositively, when no swap gains enough, no loser holds a quota — which is exactly
+    condition (P3), and the certificate is complete.
+  </p>
+
+  <p>
+    The cost is visible in the description: each round solves \(k(m-k)+1\) linear programs, and each
+    one carries \(\Theta(k^3)\) water levels.
+  </p>
+
+  <h3>Why a linear program at all</h3>
+
+  <p>
+    Harmonic entropy is defined by an infinite series, but it has a linear description once truncated.
+    Using representation (6) from the other tab,
+  </p>
+
+  <p>\[ F_L(x) \;=\; \sum_{\ell=0}^{L-1}\Bigl(\frac{1}{\ell+1} - t_\ell(x)\Bigr), \]</p>
+
+  <p>
+    and each water level \(t_\ell\) is itself the value of a small minimisation:
+    \(t_\ell(x) = \min\{\,t \ge 0 : \sum_j (x_j - t)^+ \le \ell t\,\}\). Maximising \(\sum_i F_L\) over
+    the payment polytope is therefore one linear program in the payments, the reserves, the levels
+    \(t_{i\ell}\), and auxiliary variables for the positive parts.
+  </p>
+</section>
+
+<section id="s-fast">
+  <h2><span class="num">3</span>Letting the violation choose the swap</h2>
+
+  <p>
+    The scan is redundant. The proof already identifies a swap that works, so there is no reason to
+    examine the others. The faster algorithm is:
+  </p>
+
+  <ol class="body-list">
+    <li><strong>Optimise</strong> the payments for the current committee once.</li>
+    <li><strong>Check (P3) directly.</strong> If every loser holds less than \(q\) in reserve, the
+      payment system in hand <em>is</em> a certificate — return it.</li>
+    <li>Otherwise pick a violating loser \(c\), with \(\sum_{i \in N_c} r_i \ge q\).</li>
+    <li><strong>Add it</strong> and re-optimise on \(X = W \cup \{c\}\), breaking ties toward the
+      smallest total reserve — the deletion lemma needs that.</li>
+    <li><strong>De-reserve,</strong> then delete the member collecting the least.</li>
+  </ol>
+
+  <p>
+    One payment optimisation per round instead of \(k(m-k)+1\). Nothing about the guarantee is
+    weakened: the round still improves the objective by at least \(\delta/2\), because that is what
+    the add-then-delete bound says.
+  </p>
+
+  <p>
+    The step-through below runs the real thing in your browser. Watch the \((P3)\) scan: the loop
+    ends precisely when no red bar reaches the quota line.
+  </p>
+
+  <div id="fig-a1-host"></div>
+
+  <h3>The one-LP trick</h3>
+
+  <p>
+    Steps 1 and 4 look like two solves per round, and in a first version they were. They collapse into
+    one by <em>carrying the target</em>. The addition bound says the enlarged committee admits a system
+    worth at least \(V(W) + q\) — but we do not need to know \(V(W\cup\{c\})\), only that this value is
+    reachable. So instead of maximising, the LP is asked a feasibility question: among payment systems
+    for \(X\) whose objective is at least the carried target, minimise the total reserve. That single
+    solve supplies both the progress guarantee and the tie-break the deletion step needs.
+  </p>
+
+  <p>
+    It also explains why the carried system need not itself be optimal for \(W\). The invariant is only
+    a certified <em>lower bound</em> on the objective, passed from round to round and increased by at
+    least \(\delta/2\) each time.
+  </p>
+</section>
+
+<section id="s-dereserve">
+  <h2><span class="num">4</span>De-reservation</h2>
+
+  <p>
+    The deletion half of the proof needs payments pushed as high as the cap allows. Immediately after
+    the LP, some voters may still hold reserve while approving a winner that has not reached \(q\) —
+    and then no useful bound on the cheapest deletion is available.
+  </p>
+
+  <p>
+    De-reservation fixes that by a continuous process. Every voter with reserve left who approves an
+    unsaturated winner spends it on those winners at unit rate. A stage ends when a voter's reserve
+    reaches zero, or when a winner reaches \(q\). At most \(n + |X|\) stages can occur, since each one
+    exhausts a voter or saturates a candidate.
+  </p>
+
+  <p>
+    Afterwards, the candidate with the smallest total is cheap to delete: total payments are at most
+    \(n\) spread over \(k+1\) candidates, so the minimum is at most \(n/(k+1) < q\). Being unsaturated,
+    all of its supporters have zero reserve, so each of them can simply rename her payment to it as her
+    new reserve — which keeps (P2) because de-reservation leaves that payment her largest.
+  </p>
+
+  <div id="fig-a2-host"></div>
+</section>
+
+<section id="s-trunc">
+  <h2><span class="num">5</span>The truncation, and the square-root improvement</h2>
+
+  <p>
+    Truncating the series costs something. Because the water levels shift by one index under the Robin
+    Hood operator — \(t_\ell(\rho x) = t_{\ell+1}(x)\) — the exact gain \(x_{\max}\) becomes
+  </p>
+
+  <p>\[ F_L(\rho(x)) - F_L(x) \;=\; x_{\max} - t_L(x), \]</p>
+
+  <p>
+    so each voter loses \(t_L(x)\) of the promised gain. Bounding \(t_L \le 1/(L+1)\) and summing over
+    supporters needs \(L = \Theta(n/\delta)\), which at the Hare quota is \(\Theta(k^2)\).
+  </p>
+
+  <p>
+    The improvement is to add a correction that depends only on the committee, not on the payments —
+    so it shifts the objective without moving its maximisers:
+  </p>
+
+  <p>\[ C_L(W) \;=\; \sum_{i \in N} \bigl(H_{L + u_i(W)} - H_L\bigr). \]</p>
+
+  <p>
+    Against the corrected potential \(V_L + C_L\), a voter whose distribution has \(d = u_i(W)+1\)
+    coordinates loses only \(t_L(x) - 1/(L+d)\). Writing the maximiser in Lemma 5.1 as \(S^\*\) with
+    \(s = |S^\*|\) and \(\sigma = \sum_{j \in S^\*} x_j \le 1\),
+  </p>
+
+  <p>\[ t_L(x) - \frac{1}{L+d} \;\le\; \frac{1}{s+L} - \frac{1}{d+L}
+        \;=\; \frac{d-s}{(s+L)(d+L)} \;\le\; \frac{d-1}{(L+1)^2} \;=\; \frac{u_i(W)}{(L+1)^2}. \]</p>
+
+  <p>
+    Summing over the supporters of \(c\) bounds the whole addition loss by \(E(W)/(L+1)^2\) with
+    \(E(W) = \sum_i u_i(W)\). Choosing
+  </p>
+
+  <p>\[ L \;=\; \Bigl\lceil \sqrt{\tfrac{2U}{\delta}} \Bigr\rceil, \qquad U \ge E(W), \]</p>
+
+  <p>
+    makes that loss below \(\delta/2\), so every round still makes real progress. At the Hare quota
+    this is \(\Theta(k^{3/2})\) levels rather than \(\Theta(k^2)\) — and the correction never has to be
+    computed, since it only appears in the proof.
+  </p>
+
+  <div id="fig-a3-host"></div>
+</section>
+
+<section id="s-preproc">
+  <h2><span class="num">6</span>One free simplification</h2>
+
+  <p>
+    Every reserve is at most 1, so a candidate approved by fewer than \(q\) voters can never gather a
+    quota of reserve — it is a harmless loser under any certificate. Two consequences, both exact
+    rather than heuristic:
+  </p>
+
+  <ul class="body-list">
+    <li>If at most \(k\) candidates have \(q\) or more approvers, elect all of them, fill the remaining
+      seats arbitrarily, and hand every voter a reserve of 1 with no payments. That trivially satisfies
+      (P1), (P2) and (P4), and (P3) holds because every loser is low-degree. No LP is needed at all —
+      try the <strong>Low degree</strong> instance above.</li>
+    <li>Otherwise the search can ignore low-degree candidates entirely.</li>
+  </ul>
+</section>
+
+<section id="s-verify">
+  <h2><span class="num">7</span>Why you can trust the output</h2>
+
+  <p>
+    The pleasant feature of this whole approach is that it is <strong>self-certifying</strong>. The
+    algorithm does not ask you to believe its complexity analysis. It returns a payment system, and
+    conditions (P1)–(P4) are checkable by direct arithmetic; by Theorem 3.2, any committee admitting
+    such a system satisfies core+, and hence the core.
+  </p>
+
+  <p>
+    So a mistake in the truncation bound cannot produce a wrong committee. It would show up as an
+    infeasible linear program or an exceeded round bound — a loud failure, not a silent one. That is
+    worth more than it sounds: it means the delicate part of the analysis is not load-bearing for
+    correctness, only for speed.
+  </p>
+
+  <div class="claim">
+    <div class="claim-head">what was checked here</div>
+    <p>
+      The reference implementation was run on 2,728 instances — including exhaustive sweeps of every
+      profile on 3 candidates with 3 voters and on 4 candidates with 2 voters, at every committee size
+      — plus 200 instances built to defeat the degree preprocessing and force repair rounds. For every
+      one, the returned certificate was re-checked against (P1)–(P4) in exact rational arithmetic, and
+      the committee was independently confirmed to be in the ordinary core by exhaustive enumeration of
+      all \(2^m-1\) proposals. No infeasible LP and no round-bound breach occurred.
+    </p>
+  </div>
+
+  <p>
+    The browser version above is checked the same way on every run: the pills under the stepper report
+    the certificate check and an exhaustive core check of the committee it produced.
+  </p>
+</section>
+
+<section class="footnotes">
+  <h2>Notes on this page</h2>
+  <ol>
+    <li>
+      The reference implementation is <code>core_algorithm.py</code>, which solves the payment LP in
+      exact rational arithmetic with <a href="https://github.com/Z3Prover/z3">z3</a> — no
+      floating-point tolerances. Its prose companion is
+      <code>core-algorithm-explained.md</code>.
+    </li>
+    <li>
+      The version running on this page (<code>js/core-algo.js</code>) reproduces the same loop —
+      preprocessing, (P3) scan, add, de-reserve, delete — but substitutes the projected-gradient
+      solver in <code>js/payments.js</code> for the exact LP, optimising \(F\) itself rather than a
+      truncation of it. That solver is validated against the exact rational LP in
+      <code>tests/optimiser.test.mjs</code>, agreeing to about \(10^{-13}\). The reported truncation
+      level \(L\) is computed with the reference formula for comparison; the browser solver does not
+      truncate.
+    </li>
+    <li>
+      Validation lives in <code>tests/verify_core_algorithm.py</code> (independent re-derivation of
+      the definitions), <code>tests/stress_core_algorithm.py</code> (adversarial instances) and
+      <code>tests/core-algo.test.mjs</code> (the browser version).
+      <code>tests/bench_core_algorithm.py</code> produced the measured levels in Figure 3.
+    </li>
+    <li>
+      Equation, theorem and lemma numbers follow arXiv:2609.11912v2.
+    </li>
+  </ol>
+</section>
+
+</main>
+
+<script type="module" src="js/algo-main.js"></script>
+</body>
+</html>

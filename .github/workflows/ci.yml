@@ -21,3 +21,16 @@ jobs:
       - run: npm ci
       - name: Verify the maths against the paper, and render every figure
         run: npm test
+
+  algorithm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install z3-solver
+      - name: Validate the exact reference implementation
+        run: python tests/verify_core_algorithm.py
+      - name: Adversarial instances
+        run: python tests/stress_core_algorithm.py --count 60

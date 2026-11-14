@@ -36,3 +36,6 @@ yarn-error.log*
 
 # Test/build artifacts
 .jsdom-cache/
+
+# Python
+__pycache__/
