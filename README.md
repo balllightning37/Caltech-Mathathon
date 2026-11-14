@@ -44,32 +44,42 @@ Since a maximum over finitely many committees always exists, so does a core comm
 
 ## Running it locally
 
+The published site needs **no build step and no npm** — it is plain static HTML, CSS and ES modules,
+served straight from the repository root by GitHub Pages. To preview it locally, any static server
+will do:
+
 ```bash
-npm install          # jsdom, for the render tests only
-npm run serve        # serves docs/ at http://localhost:8080
-npm test             # verifies the maths and renders every figure headlessly
+npm run serve        # or: python -m http.server 8080
 ```
 
-The site is plain static HTML, CSS and ES modules — there is no build step. `npm install` is needed
-only for the tests.
+`npm` is only needed to run the test suite:
+
+```bash
+npm install          # jsdom, for the headless render test
+npm test             # verifies the maths against the paper and renders every figure
+npm run test:slow    # enumerates all 45 committees to confirm Theorem 6.5
+npm run precompute   # regenerates data/landscape.json
+```
 
 ## Layout
 
+GitHub Pages serves the repository root, so the site lives there directly.
+
 ```
-docs/                       the published site (GitHub Pages root)
-  index.html                the explainer
-  css/style.css             design tokens and layout
-  data/landscape.json       precomputed V(W) for all 45 committees
-  js/
-    math-core.js            harmonic numbers, water levels, Robin Hood, F and its gradient
-    election.js             instances, utilities, PAV, exhaustive core check
-    payments.js             payment systems, (P1)-(P4), and the V(W) optimiser
-    ballot.js               shared approval-profile renderer
-    ui.js                   SVG/DOM helpers, controls, figure scaffold
-    figures/                one module per group of figures
-    main.js                 entry point
+index.html                  the explainer
+.nojekyll                   serve files verbatim, without Jekyll
+css/style.css               design tokens and layout
+data/landscape.json         precomputed V(W) for all 45 committees
+js/
+  math-core.js              harmonic numbers, water levels, Robin Hood, F and its gradient
+  election.js               instances, utilities, PAV, exhaustive core check
+  payments.js               payment systems, (P1)-(P4), and the V(W) optimiser
+  ballot.js                 shared approval-profile renderer
+  ui.js                     SVG/DOM helpers, controls, figure scaffold
+  figures/                  one module per group of figures
+  main.js                   entry point
 tests/                      math, election and headless render tests
-tools/precompute.mjs        regenerates docs/data/landscape.json
+tools/precompute.mjs        regenerates data/landscape.json
 tools/serve.mjs             local static server
 ```
 
@@ -87,7 +97,7 @@ is checked against the paper's own worked examples:
   payments of `2/3 > q` on `c1` and `c2`, and ties PAV with `W'`
 - the explicit certificate the paper gives for `W'` satisfies (P1)–(P4)
 
-`npm run test:slow` additionally enumerates all 45 committees of size 8 in that instance and confirms
+`npm run test:slow` enumerates all 45 committees of size 8 in that instance and confirms
 Theorem 6.5 empirically: every `V`-maximising committee is in the core, while one PAV-maximising
 committee is not.
 

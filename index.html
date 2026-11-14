@@ -606,7 +606,7 @@
   <ol>
     <li>
       All quantities are computed live from the definitions, in
-      <code>docs/js/math-core.js</code>, <code>election.js</code> and <code>payments.js</code>. The
+      <code>js/math-core.js</code>, <code>election.js</code> and <code>payments.js</code>. The
       implementation is checked against the paper's own worked examples — the water levels
       \(5/18, 5/24, 1/6\) of Figure 3, the value \(F(1/2,1/3,1/6) = 467/360\), the identity
       \(F(\text{uniform}) = H_{d-1}\), the PAV tie between \(W\) and \(W'\), and the explicit
@@ -616,7 +616,7 @@
       \(V(W)\) is a concave maximisation over a polytope. It is solved here by projected gradient ascent,
       with the projection onto (P1), (P2) and (P4) computed by Dykstra's alternating-projection
       algorithm. Values are therefore numerical, not exact; Figures 8 and 9 read from
-      <code>docs/data/landscape.json</code>, precomputed by <code>tools/precompute.mjs</code> using the
+      <code>data/landscape.json</code>, precomputed by <code>tools/precompute.mjs</code> using the
       same code this page ships.
     </li>
     <li>

@@ -11,10 +11,10 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import {
   figure2Instance, committeesOfSize, pavScore, inCore, FIG2_W, utilities,
-} from '../docs/js/election.js';
+} from '../js/election.js';
 import {
   harmonicEntropyValue, checkConditions, uniformPaymentSystem, reserveBehind,
-} from '../docs/js/payments.js';
+} from '../js/payments.js';
 
 const inst = figure2Instance();
 const name = (W) => W.map((c) => inst.candidates[c]).join(' ');
@@ -89,10 +89,10 @@ const out = {
   },
 };
 
-mkdirSync('docs/data', { recursive: true });
-writeFileSync('docs/data/landscape.json', JSON.stringify(out, null, 1));
+mkdirSync('data', { recursive: true });
+writeFileSync('data/landscape.json', JSON.stringify(out, null, 1));
 
-console.log(`\nwrote docs/data/landscape.json  (${landscape.length} committees)`);
+console.log(`\nwrote data/landscape.json  (${landscape.length} committees)`);
 console.log(`max V   = ${maxV.toFixed(6)}`);
 console.log(`max PAV = ${maxPav.toFixed(6)}`);
 console.log(`\nswap argument on W = {${name(W0)}}:`);

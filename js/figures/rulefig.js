@@ -2,7 +2,7 @@
  * Figures for Section 6: the add-then-delete swap argument, and the
  * landscape of all committees under V versus PAV.
  *
- * Both read from docs/data/landscape.json, precomputed by
+ * Both read from data/landscape.json, precomputed by
  * tools/precompute.mjs with exactly the code the page itself ships.
  */
 

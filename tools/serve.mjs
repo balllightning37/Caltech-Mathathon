@@ -5,7 +5,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.argv[2] || 8080);
-const ROOT = fileURLToPath(new URL('../docs/', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -29,4 +29,4 @@ createServer(async (req, res) => {
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('not found');
   }
-}).listen(PORT, () => console.log(`serving docs/ on http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`serving site root on http://localhost:${PORT}`));

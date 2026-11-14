@@ -52,7 +52,7 @@ async function main() {
         host.innerHTML =
           '<div class="frame"><p class="hint">Could not load '
           + '<code>data/landscape.json</code>. If you are viewing this page from the file system, '
-          + 'serve the folder over HTTP instead (<code>npx serve docs</code>).</p></div>';
+          + 'serve the folder over HTTP instead (<code>npm run serve</code>).</p></div>';
       }
     }
   }

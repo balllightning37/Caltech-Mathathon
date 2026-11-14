@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { JSDOM, VirtualConsole } from 'jsdom';
 
-const html = readFileSync(new URL('../docs/index.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 const errors = [];
 const vc = new VirtualConsole();
@@ -51,20 +51,20 @@ Object.defineProperty(window.Element.prototype, 'getBoundingClientRect', {
 window.Element.prototype.setPointerCapture = function () {};
 
 const landscape = JSON.parse(
-  readFileSync(new URL('../docs/data/landscape.json', import.meta.url), 'utf8')
+  readFileSync(new URL('../data/landscape.json', import.meta.url), 'utf8')
 );
 global.fetch = async () => ({ json: async () => landscape, ok: true });
 
 /* ---- mount every figure the way main.js does ---- */
 
 const { mountInstanceFigure, mountCoreFigure, mountCorePlusFigure } =
-  await import('../docs/js/figures/basics.js');
+  await import('../js/figures/basics.js');
 const { mountPaymentsFigure, mountPavFigure } =
-  await import('../docs/js/figures/paymentsfig.js');
+  await import('../js/figures/paymentsfig.js');
 const { mountRobinHoodFigure, mountEntropyFigure } =
-  await import('../docs/js/figures/entropyfig.js');
+  await import('../js/figures/entropyfig.js');
 const { mountSwapFigure, mountLandscapeFigure } =
-  await import('../docs/js/figures/rulefig.js');
+  await import('../js/figures/rulefig.js');
 
 const figures = [
   ['fig-1-host', 'instance',   (h) => mountInstanceFigure(h)],

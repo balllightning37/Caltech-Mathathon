@@ -1,12 +1,12 @@
 import {
   figure2Instance, FIG2_W, FIG2_WP, utilities, pavScore,
   findCoreViolation, inCore, pavWinners,
-} from '../docs/js/election.js';
+} from '../js/election.js';
 import {
   uniformPaymentSystem, checkConditions, receives, reserveBehind,
   totalEntropy, harmonicEntropyValue, paymentShape,
-} from '../docs/js/payments.js';
-import { H } from '../docs/js/math-core.js';
+} from '../js/payments.js';
+import { H } from '../js/math-core.js';
 
 let fails = 0;
 const chk = (name, got, want, tol = 1e-9) => {

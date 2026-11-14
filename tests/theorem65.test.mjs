@@ -8,8 +8,8 @@
  *     system satisfying (P1)-(P4)                      (Theorem 3.2)
  *   - PAV-optimal committees need neither              (Figure 2)
  */
-import { figure2Instance, committeesOfSize, pavScore, inCore } from '../docs/js/election.js';
-import { harmonicEntropyValue, checkConditions } from '../docs/js/payments.js';
+import { figure2Instance, committeesOfSize, pavScore, inCore } from '../js/election.js';
+import { harmonicEntropyValue, checkConditions } from '../js/payments.js';
 
 const inst = figure2Instance();
 const nm = (W) => W.map((c) => inst.candidates[c]).join(' ');

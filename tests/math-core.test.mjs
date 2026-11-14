@@ -1,4 +1,4 @@
-import { H, waterLevel, robinHood, harmonicEntropy, harmonicEntropySeries, marginalGainCheck } from '../docs/js/math-core.js';
+import { H, waterLevel, robinHood, harmonicEntropy, harmonicEntropySeries, marginalGainCheck } from '../js/math-core.js';
 
 const fr = (a,b)=>a/b;
 const show = (x)=>'('+x.map(v=>v.toFixed(4)).join(', ')+')';

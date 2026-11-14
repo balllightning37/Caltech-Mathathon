@@ -1,0 +1,23 @@
+name: Tests
+
+# The site itself needs no build step: GitHub Pages publishes the repository
+# root directly, so index.html and its assets are served exactly as committed.
+# This workflow only guards against committing broken maths or figures.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Verify the maths against the paper, and render every figure
+        run: npm test
