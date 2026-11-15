@@ -6,6 +6,11 @@
  *    satisfies (P3)
  *  - a worked instance of the add-then-delete swap argument of Section 6
  *
+ * The payment optimiser runs with `polish: true` here: it is seconds per
+ * committee rather than milliseconds, but it agrees with the exact rational
+ * LP in core_algorithm.py to about 2e-8 instead of 3e-3, and it gives
+ * committees related by a symmetry of the instance equal values.
+ *
  * Run: node tools/precompute.mjs
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -22,7 +27,7 @@ const name = (W) => W.map((c) => inst.candidates[c]).join(' ');
 console.log('computing landscape...');
 const landscape = [];
 for (const W of committeesOfSize(inst.m, inst.k)) {
-  const { value, system } = harmonicEntropyValue(inst, W);
+  const { value, system } = harmonicEntropyValue(inst, W, { polish: true });
   const cond = checkConditions(inst, W, system);
   landscape.push({
     W,
@@ -44,7 +49,7 @@ const maxPav = Math.max(...landscape.map((r) => r.pav));
 console.log('computing the swap argument...');
 const W0 = FIG2_W;
 const psU = uniformPaymentSystem(inst, W0);
-const vW0 = harmonicEntropyValue(inst, W0);
+const vW0 = harmonicEntropyValue(inst, W0, { polish: true });
 const condW0 = checkConditions(inst, W0, vW0.system);
 
 // The loser that witnesses the failure of (P3) under the *optimal* system.
@@ -56,11 +61,11 @@ const witnesses = inst.candidates
 
 const cStar = witnesses[0];
 const Wplus = [...W0, cStar.c].sort((a, b) => a - b);
-const vPlus = harmonicEntropyValue(inst, Wplus);
+const vPlus = harmonicEntropyValue(inst, Wplus, { polish: true });
 
 const deletions = Wplus.map((d) => {
   const Wd = Wplus.filter((e) => e !== d);
-  const { value } = harmonicEntropyValue(inst, Wd);
+  const { value } = harmonicEntropyValue(inst, Wd, { polish: true });
   return { d, label: inst.candidates[d], W: Wd, V: value, drop: vPlus.value - value };
 }).sort((a, b) => a.drop - b.drop);
 

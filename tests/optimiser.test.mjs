@@ -72,5 +72,33 @@ for (const [name, W] of [['W', FIG2_W], ["W'", FIG2_WP]]) {
   console.log(`${mono ? 'PASS' : 'FAIL'}  ${name}: V_5 < V_40 <= V  (${v5.toFixed(4)} < ${v40.toFixed(4)} <= ${res.value.toFixed(4)})`);
 }
 
+console.log('--- accuracy of the polish, against exact-LP reference values ---');
+{
+  // Two committees that are isomorphic under the symmetry of the Figure 2
+  // instance (swap v1<->v2 and c3<->c4), so their true V values are equal.
+  // Reference V_L values from core_algorithm.py's exact rational LP.
+  const A = [0, 3, 4, 5, 6, 7, 8, 9];   // c1 c4 c5..c10
+  const B = [0, 2, 4, 5, 6, 7, 8, 9];   // c1 c3 c5..c10
+  const REF = [[8, 5.724256303939494], [20, 6.459836126042552]];
+
+  for (const [L, want] of REF) {
+    const a = harmonicEntropyValue(inst, A, { truncation: L, polish: true }).value;
+    const b = harmonicEntropyValue(inst, B, { truncation: L, polish: true }).value;
+    chk(`polished V_${L}(A) matches the exact LP`, a, want, 1e-6);
+    chk(`polished V_${L}(B) matches the exact LP`, b, want, 1e-6);
+    const sym = Math.abs(a - b) < 1e-6;
+    if (!sym) fails++;
+    console.log(`${sym ? 'PASS' : 'FAIL'}  polished V_${L} is symmetric: |A-B| = ${Math.abs(a - b).toExponential(2)}`);
+  }
+
+  // Without the polish the gradient stalls; this records how far, so the
+  // gap is a measured fact rather than an assumption.
+  const plainA = harmonicEntropyValue(inst, A, { truncation: 20 }).value;
+  const gap = Math.abs(plainA - 6.459836126042552);
+  const known = gap < 1e-2;
+  if (!known) fails++;
+  console.log(`${known ? 'PASS' : 'FAIL'}  unpolished V_20(A) stalls by ${gap.toExponential(2)} (under 1e-2)`);
+}
+
 console.log(fails === 0 ? '\nALL TESTS PASSED' : `\n${fails} FAILURE(S)`);
 process.exit(fails === 0 ? 0 : 1);

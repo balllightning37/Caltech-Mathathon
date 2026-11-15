@@ -239,9 +239,15 @@ function projectP124(x0, inst, W, shape, lay, iters = 200) {
  * `reservePenalty` subtracts mu * sum_i r_i from the objective, which
  * approximates the "minimum total reserve among maximisers" tie-break that
  * Lemma 6.4 needs. Keep mu tiny.
+ *
+ * `polish` adds a slow pairwise-transfer pass that escapes the kinks of the
+ * piecewise-linear objective. Without it the gradient can stop about 3e-3
+ * short, and two committees related by a symmetry of the instance can get
+ * different values; with it, agreement with the exact rational LP is about
+ * 2e-9. It costs seconds per committee, so only the precompute uses it.
  */
 export function harmonicEntropyValue(
-  inst, W, { iters = 300, truncation = null, reservePenalty = 0 } = {}
+  inst, W, { iters = 300, truncation = null, reservePenalty = 0, polish = false } = {}
 ) {
   const shape = paymentShape(inst, W);
   const lay = layout(shape);
@@ -338,66 +344,36 @@ export function harmonicEntropyValue(
      * kink blocks. Without this, two committees that are isomorphic under a
      * symmetry of the instance can report different values of V.
      *
-     * Such a transfer keeps that voter's block summing to 1, so (P1) holds
-     * for free and feasibility can be checked in closed form — no
-     * projection, which is what makes the polish affordable.
+     * A transfer must be re-projected, because respecting the (P4) cap can
+     * require compensating changes in other voters' payments to the same
+     * candidate — which is exactly why a purely local check finds nothing.
+     * That makes the polish costly, so it is opt-in: tools/precompute.mjs
+     * enables it for the values the figures publish, while the browser and
+     * the test sweeps use the plain gradient result.
      */
-    {
-      // Running per-winner totals, for the (P4) cap.
-      const total = new Map();
-      for (const c of W) total.set(c, 0);
-      shape.forEach((cs, i) => cs.forEach((c, t) => {
-        total.set(c, total.get(c) + x[lay.offset[i] + 1 + t]);
-      }));
-
-      // F decomposes over voters, so only the touched voter is re-scored.
-      const blockScore = (vec, i) => scoreOf(dropZeros(blockOf(vec, i, shape[i])));
-      const scores = shape.map((cs, i) => blockScore(x, i));
-
-      for (let delta = 0.08; delta > 1e-9; delta *= 0.5) {
-        let gained = true;
-        while (gained) {
-          gained = false;
+    if (polish) {
+      for (let round = 0; round < 40; round++) {
+        let gained = false;
+        for (let delta = 0.08; delta > 1e-6; delta *= 0.5) {
           for (let i = 0; i < shape.length; i++) {
-            const cs = shape[i];
-            const d = cs.length + 1;
+            const d = shape[i].length + 1;
             if (d < 2) continue;
-            const off = lay.offset[i];
             for (let a = 0; a < d; a++) {
-              if (x[off + a] < delta - 1e-15) continue;
+              if (x[lay.offset[i] + a] < delta - 1e-15) continue;
               for (let b = 0; b < d; b++) {
                 if (a === b) continue;
-                // (P4): only a payment receiving mass can breach the cap.
-                if (b > 0 && total.get(cs[b - 1]) + delta > inst.q + 1e-12) continue;
-                const va = x[off + a] - delta;
-                const vb = x[off + b] + delta;
-                // (P2): the reserve must remain a largest coordinate.
-                const reserve = a === 0 ? va : b === 0 ? vb : x[off];
-                let ok = true;
-                for (let t = 1; t < d && ok; t++) {
-                  const pay = t === a ? va : t === b ? vb : x[off + t];
-                  if (pay > reserve + 1e-12) ok = false;
-                }
-                if (!ok) continue;
-
-                const before = x[off + a], beforeB = x[off + b];
-                x[off + a] = va; x[off + b] = vb;
-                const after = blockScore(x, i);
-                if (after > scores[i] + 1e-13) {
-                  val += after - scores[i];
-                  scores[i] = after;
-                  if (a > 0) total.set(cs[a - 1], total.get(cs[a - 1]) - delta);
-                  if (b > 0) total.set(cs[b - 1], total.get(cs[b - 1]) + delta);
-                  gained = true;
-                } else {
-                  x[off + a] = before; x[off + b] = beforeB;
-                }
+                const y = Float64Array.from(x);
+                y[lay.offset[i] + a] -= delta;
+                y[lay.offset[i] + b] += delta;
+                const yp = projectP124(y, inst, W, shape, lay, 120);
+                const v = objective(yp);
+                if (v > val + 1e-12) { x = yp; val = v; gained = true; }
               }
             }
           }
         }
+        if (!gained) break;
       }
-      val = objective(x);
     }
 
     if (val > bestVal) { bestVal = val; bestX = Float64Array.from(x); }

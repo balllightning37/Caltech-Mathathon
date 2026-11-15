@@ -138,9 +138,18 @@ Theorem 6.5 empirically: every `V`-maximising committee is in the core, while on
 committee is not.
 
 `V(W)` is a concave maximisation over a polytope, solved by projected gradient ascent with Dykstra's
-alternating-projection algorithm for the constraints. Those values are numerical rather than exact, but
-`tests/optimiser.test.mjs` pins the solver against the exact rational LP in `core_algorithm.py` and they
-agree to about 1e-13.
+alternating-projection algorithm for the constraints. The values are numerical, not exact, and the
+accuracy depends on one option:
+
+- **With `polish: true`** (what `tools/precompute.mjs` uses for the values the figures publish) it
+  agrees with the exact rational LP in `core_algorithm.py` to about `2e-8`, and gives equal values to
+  committees related by a symmetry of the instance. Costs seconds per committee.
+- **Without it** (the browser and the test sweeps) the gradient can stall at a kink of the
+  piecewise-linear objective and stop up to about `3e-3` short. That is immaterial where it is used:
+  the interactive runner only needs *feasible* payment systems, and it verifies (P1)-(P4) on whatever
+  it produces.
+
+`tests/optimiser.test.mjs` pins both regimes against exact-LP reference values.
 
 ### The algorithm
 

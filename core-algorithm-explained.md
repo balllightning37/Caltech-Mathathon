@@ -1,6 +1,6 @@
 # The core algorithm, without the technical machinery
 
-This note explains both the paper's local-search algorithm and the faster constructive version. The complete exact-rational implementation is in [core_algorithm.py](core_algorithm.py). A proof of the latest square-root truncation improvement is in section 5 of the [algorithm explainer](https://balllightning37.github.io/Caltech-Mathathon/algorithm.html).
+This note explains both the paper's local-search algorithm and the faster constructive version. The complete exact-rational implementation is in [core_algorithm.py](core_algorithm.py). A proof of the latest square-root truncation improvement is in [core-algorithm-accelerated.md](core-algorithm-accelerated.md); the same bound is derived in section 5 of the [algorithm explainer](https://balllightning37.github.io/Caltech-Mathathon/algorithm.html).
 
 ## 1. What are we trying to find?
 
