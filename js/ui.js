@@ -178,6 +178,42 @@ export function bar({ x, y, w, hgt, fill, stroke, dir = 'up', r = 4 }) {
   return s('path', { d, fill, stroke, 'stroke-width': stroke ? 1 : 0 });
 }
 
+/* ------------------------------------------------- threshold guide lines */
+
+/**
+ * Shared vertical layout for a bar chart that carries a threshold line.
+ * The title owns the first text band and the threshold label the second, so
+ * the two can never collide however far left the line falls.
+ */
+export const CHART_TITLE_Y = 11;
+export const CHART_LABEL_Y = 25;
+export const CHART_TOP = 29;
+
+/**
+ * A dashed threshold line (a quota, a bound) with its label.
+ *
+ * The label sits at CHART_LABEL_Y — its own band, below the title — and is
+ * anchored start/end near the edges so it also cannot overflow the canvas.
+ * Pass the canvas width so the clamp knows where the edges are.
+ */
+export function threshold({ x, top = CHART_TOP, bottom, label, width,
+                            labelY = CHART_LABEL_Y, colour = 'var(--fg)' }) {
+  const g = s('g');
+  g.appendChild(s('line', {
+    x1: x, y1: top, x2: x, y2: bottom,
+    stroke: colour, 'stroke-width': 1, 'stroke-dasharray': '3 2',
+  }));
+  // ~9.5px monospace: half the string is about 3px per character.
+  const half = label.length * 3;
+  const anchor = x - half < 2 ? 'start' : (x + half > width - 2 ? 'end' : 'middle');
+  g.appendChild(s('text', {
+    x: anchor === 'start' ? 2 : anchor === 'end' ? width - 2 : x,
+    y: labelY, class: 'lbl-mono', 'text-anchor': anchor,
+    'font-size': 9.5, fill: colour,
+  }, label));
+  return g;
+}
+
 /** Attach a lightweight hover tooltip to an SVG figure. */
 export function tooltip(host) {
   const tip = h('div', {

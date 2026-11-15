@@ -115,10 +115,13 @@ export function mountRobinHoodFigure(host, { num = 6 } = {}) {
           stroke: 'var(--teal-line)', 'stroke-width': 1, 'stroke-dasharray': '3 2',
         }));
       }
-      g.appendChild(s('text', {
-        x: bx + bw / 2, y: baseY - v * scale - 6, class: 'lbl-mono',
-        'text-anchor': 'middle', 'font-size': 9.5, fill: 'var(--muted-strong)',
-      }, frac(v)));
+      // With many coordinates the slots get too narrow for a value label.
+      if (slot >= 30) {
+        g.appendChild(s('text', {
+          x: bx + bw / 2, y: baseY - v * scale - 6, class: 'lbl-mono',
+          'text-anchor': 'middle', 'font-size': 9.5, fill: 'var(--muted-strong)',
+        }, frac(v)));
+      }
       g.appendChild(s('text', {
         x: bx + bw / 2, y: baseY + 13, class: 'tick', 'text-anchor': 'middle',
       }, String(j + 1)));
@@ -137,10 +140,12 @@ export function mountRobinHoodFigure(host, { num = 6 } = {}) {
           x: bx, y: baseY - t * scale, w: bw, hgt: t * scale,
           fill: 'var(--amber-soft)', stroke: 'var(--amber-line)',
         }));
-        g.appendChild(s('text', {
-          x: bx + bw / 2, y: baseY - t * scale - 6, class: 'lbl-mono',
-          'text-anchor': 'middle', 'font-size': 9.5, fill: 'var(--amber-line)',
-        }, frac(t)));
+        if (slot >= 30) {
+          g.appendChild(s('text', {
+            x: bx + bw / 2, y: baseY - t * scale - 6, class: 'lbl-mono',
+            'text-anchor': 'middle', 'font-size': 9.5, fill: 'var(--amber-line)',
+          }, frac(t)));
+        }
         g.appendChild(s('text', {
           x: bx + bw / 2, y: baseY + 13, class: 'tick', 'text-anchor': 'middle',
           fill: 'var(--amber-line)',

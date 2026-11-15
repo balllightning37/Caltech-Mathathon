@@ -6,7 +6,11 @@
  * tools/precompute.mjs with exactly the code the page itself ships.
  */
 
-import { h, s, clear, canvas, figure, button, legend, pill, frac, dec, tooltip, hoverable, bar } from '../ui.js';
+import {
+  h, s, clear, canvas, figure, button, legend, pill,
+  frac, dec, tooltip, hoverable, bar,
+  threshold, CHART_TITLE_Y, CHART_TOP,
+} from '../ui.js';
 
 let DATA = null;
 
@@ -142,13 +146,13 @@ export function mountSwapFigure(host, data, { num = 8 } = {}) {
     ]));
 
     /* ---- all candidate deletions, to show the averaging bound is real ---- */
-    const dw = canvas(620, swap.deletions.length * 13 + 32);
-    dw.appendChild(s('text', { x: 0, y: 11, class: 'lbl', 'font-weight': 600 },
+    const dw = canvas(620, CHART_TOP + swap.deletions.length * 13 + 6);
+    dw.appendChild(s('text', { x: 0, y: CHART_TITLE_Y, class: 'lbl', 'font-weight': 600 },
       `cost of deleting each member of W ∪ {${swap.cStar.label}}`));
     const dmax = Math.max(...swap.deletions.map((d) => d.drop), I.nOverKPlus1) * 1.15;
     const dx0 = 36, dbw = 430;
     swap.deletions.forEach((d, j) => {
-      const y = 20 + j * 13;
+      const y = CHART_TOP + 2 + j * 13;
       const g = s('g');
       g.appendChild(s('text', { x: 0, y: y + 8, class: 'lbl-mono', 'font-size': 9.5 }, d.label));
       g.appendChild(bar({
@@ -162,14 +166,12 @@ export function mountSwapFigure(host, data, { num = 8 } = {}) {
       hoverable(g, tip, `delete ${d.label}\nV drops by ${dec(d.drop, 5)}`);
       dw.appendChild(g);
     });
-    const nx = dx0 + (I.nOverKPlus1 / dmax) * dbw;
-    dw.appendChild(s('line', {
-      x1: nx, y1: 14, x2: nx, y2: 20 + swap.deletions.length * 13,
-      stroke: 'var(--fg)', 'stroke-width': 1, 'stroke-dasharray': '3 2',
+    dw.appendChild(threshold({
+      x: dx0 + (I.nOverKPlus1 / dmax) * dbw,
+      bottom: CHART_TOP + swap.deletions.length * 13,
+      label: `n/(k+1) = ${dec(I.nOverKPlus1, 3)}`,
+      width: 620,
     }));
-    dw.appendChild(s('text', {
-      x: nx, y: 11, class: 'lbl-mono', 'text-anchor': 'middle', 'font-size': 9.5,
-    }, `n/(k+1) = ${dec(I.nOverKPlus1, 3)}`));
     body.appendChild(dw);
 
     body.appendChild(legend([
@@ -263,7 +265,9 @@ export function mountLandscapeFigure(host, data, { num = 9 } = {}) {
 
     // marks: circle = in core, square = not (so identity is not colour alone)
     pts.forEach((p) => {
-      const rad = 5 + Math.sqrt(p.members.length) * 2.6;
+      // Keep the area encoding but small enough that neighbouring markers
+      // do not bury each other's count labels.
+      const rad = 4 + Math.sqrt(p.members.length) * 1.8;
       const g = s('g');
       const fill = p.core ? 'var(--teal)' : 'var(--brick)';
       const line = p.core ? 'var(--teal-line)' : 'var(--brick-line)';

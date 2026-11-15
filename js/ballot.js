@@ -107,10 +107,24 @@ export function drawProfile(inst, opts = {}) {
     if (opts.annotate) {
       const a = opts.annotate(c);
       if (a) {
-        g.appendChild(s('text', {
-          x: colX(inst.n - 1) + COL + 6, y: y + ROW / 2 + 4,
-          class: 'lbl-mono', fill: 'var(--muted)',
-        }, a));
+        // Several candidates can share a row, so the annotation goes just
+        // right of this candidate's own rectangle rather than at a fixed
+        // column where same-row labels would land on top of each other.
+        // If it would not fit before the next rectangle in the row, drop it.
+        const rowMates = order.filter((o) => o !== c && rowOf[o] === rowOf[c]
+          && inst.supporters[o].length);
+        const nextLeft = rowMates
+          .map((o) => colX(Math.min(...inst.supporters[o])) + 2)
+          .filter((lx) => lx > x)
+          .reduce((m, lx) => Math.min(m, lx), Infinity);
+        const limit = Math.min(nextLeft, colX(inst.n - 1) + COL + (opts.rightPad || 0));
+        const needed = a.length * 6.4;
+        if (x + w + 6 + needed <= limit) {
+          g.appendChild(s('text', {
+            x: x + w + 6, y: y + ROW / 2 + 4,
+            class: 'lbl-mono', fill: 'var(--muted)',
+          }, a));
+        }
       }
     }
 

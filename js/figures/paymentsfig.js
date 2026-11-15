@@ -3,7 +3,11 @@
  * (proportional approval voting and where its uniform payments break).
  */
 
-import { h, s, clear, canvas, figure, button, segmented, legend, pill, frac, dec, tooltip, hoverable, bar } from '../ui.js';
+import {
+  h, s, clear, canvas, figure, button, segmented, legend, pill,
+  frac, dec, tooltip, hoverable, bar,
+  threshold, CHART_TITLE_Y, CHART_TOP,
+} from '../ui.js';
 import { figure2Instance, FIG2_W, FIG2_WP, utilities, pavScore, inCore } from '../election.js';
 import {
   uniformPaymentSystem, paymentShape, checkConditions, receives, reserveBehind,
@@ -179,15 +183,15 @@ export function mountPaymentsFigure(host, { num = 4 } = {}) {
     body.appendChild(svg);
 
     /* ---- candidate totals against the quota ---- */
-    const cw = canvas(PLOT_W, 128);
-    cw.appendChild(s('text', { x: 0, y: 11, class: 'lbl', 'font-weight': 600 },
+    const bh = 9, bgap = 2;
+    const cw = canvas(PLOT_W, CHART_TOP + inst.m * (bh + bgap) + 6);
+    cw.appendChild(s('text', { x: 0, y: CHART_TITLE_Y, class: 'lbl', 'font-weight': 600 },
       'what each candidate collects   (winners: payments · losers: reserve behind them)'));
     const cx0 = 40, cbw = PLOT_W - 110, maxV = Math.max(inst.q * 1.9, 0.9);
-    const bh = 9, bgap = 2;
     inst.candidates.forEach((cname, c) => {
       const isW = Wset.has(c);
       const v = isW ? receives(inst, ps, c) : reserveBehind(inst, ps, c);
-      const y = 22 + c * (bh + bgap);
+      const y = CHART_TOP + 2 + c * (bh + bgap);
       const bad = isW ? v > inst.q + 1e-7 : v >= inst.q - 1e-7;
       const g = s('g');
       g.appendChild(s('text', { x: 0, y: y + 8, class: 'lbl-mono', 'font-size': 9.5 }, cname));
@@ -203,9 +207,12 @@ export function mountPaymentsFigure(host, { num = 4 } = {}) {
       hoverable(g, tip, `${cname}  ${isW ? 'winner' : 'loser'}\n${isW ? 'receives' : 'reserve behind it'} ${dec(v, 4)}\nquota q = ${dec(inst.q, 3)}`);
       cw.appendChild(g);
     });
-    const qx = cx0 + (inst.q / maxV) * cbw;
-    cw.appendChild(s('line', { x1: qx, y1: 16, x2: qx, y2: 22 + inst.m * (bh + bgap), stroke: 'var(--fg)', 'stroke-width': 1, 'stroke-dasharray': '3 2' }));
-    cw.appendChild(s('text', { x: qx, y: 13, class: 'lbl-mono', 'text-anchor': 'middle', 'font-size': 9.5 }, `q = ${frac(inst.q)}`));
+    cw.appendChild(threshold({
+      x: cx0 + (inst.q / maxV) * cbw,
+      bottom: CHART_TOP + inst.m * (bh + bgap),
+      label: `q = ${frac(inst.q)}`,
+      width: PLOT_W,
+    }));
     body.appendChild(cw);
 
     /* ---- the four conditions ---- */

@@ -10,6 +10,7 @@
 import {
   h, s, clear, canvas, figure, button, segmented, legend, pill,
   frac, dec, tooltip, hoverable, bar,
+  threshold, CHART_TITLE_Y, CHART_TOP,
 } from '../ui.js';
 import { drawProfile } from '../ballot.js';
 import { makeInstance, findCoreViolation, utilities } from '../election.js';
@@ -564,15 +565,12 @@ export function mountRunnerFigure(host) {
     }
     if (!losers.length) return null;
     const maxH = Math.max(inst.q * 1.5, ...losers.map((x) => x.held), 0.2);
-    // The quota label gets its own band under the title, so the two can
-    // never collide however far left the quota line falls.
-    const TITLE_Y = 11, QLABEL_Y = 25, TOP = 29;
-    const svg = canvas(560, TOP + losers.length * 13 + 3);
-    svg.appendChild(s('text', { x: 0, y: TITLE_Y, class: 'lbl', 'font-weight': 600 },
+    const svg = canvas(560, CHART_TOP + losers.length * 13 + 4);
+    svg.appendChild(s('text', { x: 0, y: CHART_TITLE_Y, class: 'lbl', 'font-weight': 600 },
       '(P3): reserve held behind each loser'));
     const x0 = 40, bw = 400;
     losers.forEach((it, j) => {
-      const y = TOP + 2 + j * 13;
+      const y = CHART_TOP + 2 + j * 13;
       const bad = it.held >= inst.q - 1e-9;
       const picked = it.c === step.picked;
       const g = s('g');
@@ -589,19 +587,12 @@ export function mountRunnerFigure(host) {
       }, dec(it.held, 3) + (picked ? '  ← add this one' : '')));
       svg.appendChild(g);
     });
-    const qx = x0 + (inst.q / maxH) * bw;
-    svg.appendChild(s('line', {
-      x1: qx, y1: TOP, x2: qx, y2: TOP + losers.length * 13,
-      stroke: 'var(--fg)', 'stroke-dasharray': '3 2',
+    svg.appendChild(threshold({
+      x: x0 + (inst.q / maxH) * bw,
+      bottom: CHART_TOP + losers.length * 13,
+      label: `q = ${frac(inst.q)}`,
+      width: 560,
     }));
-    // Keep the label inside the canvas when the line sits near an edge.
-    const label = `q = ${frac(inst.q)}`;
-    const halfW = label.length * 3;
-    const anchor = qx - halfW < 2 ? 'start' : (qx + halfW > 558 ? 'end' : 'middle');
-    svg.appendChild(s('text', {
-      x: anchor === 'start' ? 2 : anchor === 'end' ? 558 : qx,
-      y: QLABEL_Y, class: 'lbl-mono', 'text-anchor': anchor, 'font-size': 9.5,
-    }, label));
     return svg;
   }
 

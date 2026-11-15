@@ -329,7 +329,78 @@ export function harmonicEntropyValue(
       }
       if (!improved || step < 1e-12) break;
     }
-    if (val > bestVal) { bestVal = val; bestX = x; }
+
+    /*
+     * F is concave but piecewise linear in places, so a gradient step can
+     * stall at a kink even though the point is not optimal: the subgradient
+     * direction simply is not improving there. Polish by moving mass
+     * directly between two coordinates of one voter, which is the move a
+     * kink blocks. Without this, two committees that are isomorphic under a
+     * symmetry of the instance can report different values of V.
+     *
+     * Such a transfer keeps that voter's block summing to 1, so (P1) holds
+     * for free and feasibility can be checked in closed form — no
+     * projection, which is what makes the polish affordable.
+     */
+    {
+      // Running per-winner totals, for the (P4) cap.
+      const total = new Map();
+      for (const c of W) total.set(c, 0);
+      shape.forEach((cs, i) => cs.forEach((c, t) => {
+        total.set(c, total.get(c) + x[lay.offset[i] + 1 + t]);
+      }));
+
+      // F decomposes over voters, so only the touched voter is re-scored.
+      const blockScore = (vec, i) => scoreOf(dropZeros(blockOf(vec, i, shape[i])));
+      const scores = shape.map((cs, i) => blockScore(x, i));
+
+      for (let delta = 0.08; delta > 1e-9; delta *= 0.5) {
+        let gained = true;
+        while (gained) {
+          gained = false;
+          for (let i = 0; i < shape.length; i++) {
+            const cs = shape[i];
+            const d = cs.length + 1;
+            if (d < 2) continue;
+            const off = lay.offset[i];
+            for (let a = 0; a < d; a++) {
+              if (x[off + a] < delta - 1e-15) continue;
+              for (let b = 0; b < d; b++) {
+                if (a === b) continue;
+                // (P4): only a payment receiving mass can breach the cap.
+                if (b > 0 && total.get(cs[b - 1]) + delta > inst.q + 1e-12) continue;
+                const va = x[off + a] - delta;
+                const vb = x[off + b] + delta;
+                // (P2): the reserve must remain a largest coordinate.
+                const reserve = a === 0 ? va : b === 0 ? vb : x[off];
+                let ok = true;
+                for (let t = 1; t < d && ok; t++) {
+                  const pay = t === a ? va : t === b ? vb : x[off + t];
+                  if (pay > reserve + 1e-12) ok = false;
+                }
+                if (!ok) continue;
+
+                const before = x[off + a], beforeB = x[off + b];
+                x[off + a] = va; x[off + b] = vb;
+                const after = blockScore(x, i);
+                if (after > scores[i] + 1e-13) {
+                  val += after - scores[i];
+                  scores[i] = after;
+                  if (a > 0) total.set(cs[a - 1], total.get(cs[a - 1]) - delta);
+                  if (b > 0) total.set(cs[b - 1], total.get(cs[b - 1]) + delta);
+                  gained = true;
+                } else {
+                  x[off + a] = before; x[off + b] = beforeB;
+                }
+              }
+            }
+          }
+        }
+      }
+      val = objective(x);
+    }
+
+    if (val > bestVal) { bestVal = val; bestX = Float64Array.from(x); }
   }
 
   return { value: bestVal, system: fromVector(bestX, shape, lay), shape };

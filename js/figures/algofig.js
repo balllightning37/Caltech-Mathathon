@@ -6,6 +6,7 @@
 import {
   h, s, clear, canvas, figure, button, segmented, legend, pill,
   frac, dec, tooltip, hoverable, bar,
+  threshold, CHART_TITLE_Y, CHART_TOP,
 } from '../ui.js';
 import { drawProfile } from '../ballot.js';
 import { makeInstance, figure2Instance, findCoreViolation, utilities } from '../election.js';
@@ -145,15 +146,12 @@ export function mountAlgorithmFigure(host) {
     }
     if (losers.length) {
       const maxH = Math.max(inst.q * 1.6, ...losers.map((x) => x.held), 0.3);
-      // The quota label sits in its own band under the title, so it can
-      // never collide with it however far left the quota line falls.
-      const QLABEL_Y = 25, TOP = 30;
-      const svg = canvas(PLOT_W, TOP + losers.length * 14 + 3);
-      svg.appendChild(s('text', { x: 0, y: 11, class: 'lbl', 'font-weight': 600 },
+      const svg = canvas(PLOT_W, CHART_TOP + losers.length * 14 + 4);
+      svg.appendChild(s('text', { x: 0, y: CHART_TITLE_Y, class: 'lbl', 'font-weight': 600 },
         'step 2 — reserve held behind each loser   (a quota or more is a (P3) violation)'));
       const x0 = 40, bw = PLOT_W - 120;
       losers.forEach((it, j) => {
-        const y = TOP + 2 + j * 14;
+        const y = CHART_TOP + 2 + j * 14;
         const bad = it.held >= inst.q - 1e-9;
         const g = s('g');
         g.appendChild(s('text', { x: 0, y: y + 9, class: 'lbl-mono', 'font-size': 9.5 },
@@ -172,18 +170,12 @@ export function mountAlgorithmFigure(host) {
           + `reserve behind it: ${dec(it.held, 4)}\nquota q = ${dec(inst.q, 4)}`);
         svg.appendChild(g);
       });
-      const qx = x0 + (inst.q / maxH) * bw;
-      svg.appendChild(s('line', {
-        x1: qx, y1: TOP, x2: qx, y2: TOP + losers.length * 14,
-        stroke: 'var(--fg)', 'stroke-dasharray': '3 2',
+      svg.appendChild(threshold({
+        x: x0 + (inst.q / maxH) * bw,
+        bottom: CHART_TOP + losers.length * 14,
+        label: `q = ${frac(inst.q)}`,
+        width: PLOT_W,
       }));
-      const qLabel = `q = ${frac(inst.q)}`;
-      const qHalf = qLabel.length * 3;
-      const qAnchor = qx - qHalf < 2 ? 'start' : (qx + qHalf > PLOT_W - 2 ? 'end' : 'middle');
-      svg.appendChild(s('text', {
-        x: qAnchor === 'start' ? 2 : qAnchor === 'end' ? PLOT_W - 2 : qx,
-        y: QLABEL_Y, class: 'lbl-mono', 'text-anchor': qAnchor, 'font-size': 9.5,
-      }, qLabel));
       body.appendChild(svg);
     }
 
@@ -202,12 +194,12 @@ export function mountAlgorithmFigure(host) {
       // Candidate totals in the de-reserved system, with the deletion marked.
       const Xs = R.X;
       const tmax = Math.max(inst.q * 1.25, ...Xs.map((c) => R.totals[c]));
-      const svg2 = canvas(PLOT_W, 30 + Xs.length * 14);
-      svg2.appendChild(s('text', { x: 0, y: 11, class: 'lbl', 'font-weight': 600 },
+      const svg2 = canvas(PLOT_W, CHART_TOP + Xs.length * 14 + 4);
+      svg2.appendChild(s('text', { x: 0, y: CHART_TITLE_Y, class: 'lbl', 'font-weight': 600 },
         'step 5 — total de-reserved payments; the smallest is deleted'));
       const x0 = 40, bw = PLOT_W - 130;
       Xs.forEach((c, j) => {
-        const y = 20 + j * 14;
+        const y = CHART_TOP + 2 + j * 14;
         const chosen = c === R.d;
         const g = s('g');
         g.appendChild(s('text', { x: 0, y: y + 9, class: 'lbl-mono', 'font-size': 9.5 },
@@ -226,13 +218,12 @@ export function mountAlgorithmFigure(host) {
       });
       const nx = x0 + (inst.n / (inst.k + 1) / tmax) * bw;
       if (nx < x0 + bw) {
-        svg2.appendChild(s('line', {
-          x1: nx, y1: 15, x2: nx, y2: 20 + Xs.length * 14,
-          stroke: 'var(--fg)', 'stroke-dasharray': '3 2',
+        svg2.appendChild(threshold({
+          x: nx,
+          bottom: CHART_TOP + Xs.length * 14,
+          label: `n/(k+1) = ${dec(inst.n / (inst.k + 1), 2)}`,
+          width: PLOT_W,
         }));
-        svg2.appendChild(s('text', {
-          x: nx, y: 12, class: 'lbl-mono', 'text-anchor': 'middle', 'font-size': 9.5,
-        }, `n/(k+1) = ${dec(inst.n / (inst.k + 1), 2)}`));
       }
       panel.appendChild(svg2);
       panel.appendChild(h('p', { class: 'hint', text:
@@ -375,6 +366,7 @@ export function mountDereserveFigure(host) {
     }, 'stage'));
 
     const HUES = ['var(--teal)', 'var(--amber)', 'var(--violet)', 'var(--pink)', 'var(--brick)'];
+    const usedLabelY = [];
     series.forEach((ser, t) => {
       const colour = HUES[t % HUES.length];
       const pts = ser.vals.map((v, j) => `${sx(j)},${sy(v)}`).join(' ');
@@ -386,8 +378,14 @@ export function mountDereserveFigure(host) {
         hoverable(dot, tip, `${inst.voters[ser.i]}\nstage ${j}: reserve ${dec(v, 4)}`);
         svg.appendChild(dot);
       });
+      // Several voters often end on the same reserve, so nudge labels that
+      // would land on the same baseline.
+      const endY = sy(ser.vals[ser.vals.length - 1]);
+      let labelY = endY + 3;
+      while (usedLabelY.some((u) => Math.abs(u - labelY) < 10)) labelY += 10;
+      usedLabelY.push(labelY);
       svg.appendChild(s('text', {
-        x: L + pw + 8, y: sy(ser.vals[ser.vals.length - 1]) + 3,
+        x: L + pw + 8, y: labelY,
         class: 'lbl-mono', 'font-size': 9.5, fill: colour,
       }, inst.voters[ser.i]));
     });

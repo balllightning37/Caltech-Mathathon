@@ -1,0 +1,1033 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.25cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,longtable,array,tabularx}
+\usepackage{xcolor,enumitem,listings,fancyhdr,microtype,setspace}
+\usepackage{hyperref,xurl,cleveref}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!55!black,pdftitle={Harmonic Entropy and an O(nk^5/2)-Sized LP Algorithm},pdfauthor={Kalan Warusa, Gabriel Goh, Koudai Sakayama, and Jerome Austin Te}}
+\linespread{1.04}
+\setlist{itemsep=2pt,topsep=4pt,parsep=0pt}
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{1em}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\nouppercase{\leftmark}}
+\fancyhead[R]{\thepage}
+\setlength{\headheight}{13.6pt}
+\lstdefinestyle{code}{basicstyle=\ttfamily\small,breaklines=true,showstringspaces=false,frame=single,rulecolor=\color{black!25},backgroundcolor=\color{black!4},xleftmargin=2mm,xrightmargin=2mm,aboveskip=8pt,belowskip=8pt,captionpos=b,numbers=left,numberstyle=\tiny\color{black!55},numbersep=7pt}
+\lstdefinestyle{plaincode}{basicstyle=\ttfamily\small,breaklines=true,showstringspaces=false,frame=single,rulecolor=\color{black!25},backgroundcolor=\color{black!4},xleftmargin=2mm,xrightmargin=2mm,aboveskip=8pt,belowskip=8pt,captionpos=b}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\N}{\mathbb N}
+\newcommand{\R}{\mathbb R}
+\newcommand{\calP}{\mathcal P}
+\newcommand{\tV}{\widetilde V}
+\newcommand{\barV}{\bar V}
+\newcommand{\LP}{\operatorname{LP}}
+\DeclareMathOperator{\PAV}{PAV}
+\title{\LARGE Harmonic Entropy and an \texorpdfstring{$O(nk^{5/2})$}{O(nk^5/2)}-Sized LP Algorithm\\[8pt]
+\large Intuition for the core proof and an optimised implementation}
+\author{Kalan Warusa, Gabriel Goh, Koudai Sakayama, and Jerome Austin Te\\
+Massachusetts Institute of Technology\\[4pt]
+AI-assisted research and implementation\\[4pt]
+Track: Computation/Applied Mathematics\\
+Repository: Open Math OS project workspace (no public remote configured)}
+\date{15 November 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+We present two results. First, we give the intuition behind harmonic entropy: it is the essentially unique score that agrees with PAV on uniform payments and preserves the reserve exactly under the optimal water-filling extension permitted by the payment caps. Concavity and symmetry are motivated by interpolation and make balance a consequence. We then prove the deletion lemma needed in the core proof without the original continuous stage process. Second, and independently, we derive an algorithm that uses an optimised truncated potential and a violation-guided, one-LP-per-repair loop. In the dense Hare-quota case each LP has size $O(nk^{5/2})$, and there are at most $1+\lfloor2\bar V/\delta\rfloor$ such LPs. We prove the complexity bound, provide complete rational code, and report its tests. An interactive proof and algorithm explainer accompanies the written material.
+\end{abstract}
+\tableofcontents
+
+\section{The problem}
+An approval election consists of voters $N$ with $|N|=n$, candidates $C$ with $|C|=m$, and a target committee size $1\le k<m$. Voter $i$ approves a set $A_i\subseteq C$ and has utility $u_i(X)=|A_i\cap X|$ from a candidate set $X$. Put $N_c=\{i:c\in A_i\}$ and $q=n/k$, the Hare quota.
+
+A $k$-set $W$ is \emph{core-stable} if no coalition can afford a jointly preferred alternative: for every non-empty $T\subseteq C$,
+\[
+|S_T(W)|<q|T|,\qquad S_T(W)=\{i:u_i(T)>u_i(W)\}.
+\]
+Only $|T|\le k$ matters. This condition asks for more than high total approval: veto power belongs to any sufficiently large group, not just to voters sharing a single candidate.
+
+Becker, Greger, and Peters proved that such a committee always exists by strengthening the core to core+, which also excludes fractional deviations \cite{bgp}. The proof has an attractive algorithmic consequence, but the relevant potential initially looks highly engineered. Our first goal here is to explain why harmonic entropy is in fact almost forced by the desired exchange argument. Our second, separate goal is a faster way to compute a certified committee.
+
+The event contribution consists of this intuition, a simplified proof of Lemma 6.4, the algorithmic improvements and their complexity analysis, implementation code, and the interactive explainers.
+
+\section{Payment systems and LP duality}
+Strengthening the core yields a useful equivalent problem in payments. For a candidate set $W$, give every voter a reserve $r_i\ge0$ and nonnegative payments $p_{ic}$ for approved winners $c\in A_i\cap W$. The conditions are
+\begin{align*}
+\textbf{(P1)}\quad&r_i+\sum_{c\in A_i\cap W}p_{ic}=1
+   &&\text{(unit budget)},\\
+\textbf{(P2)}\quad&p_{ic}\le r_i
+   &&\text{(reserve dominance)},\\
+\textbf{(P3)}\quad&\sum_{i\in N_c}r_i<q\quad(c\notin W)
+   &&\text{(no threatening loser)},\\
+\textbf{(P4)}\quad&\sum_{i\in N_c}p_{ic}\le q\quad(c\in W)
+   &&\text{(winner caps)}.
+\end{align*}
+
+\begin{theorem}[Payment characterisation \cite{bgp}]
+A committee is core+ exactly when it admits a payment system satisfying (P1)--(P4). Consequently core+ membership is decided by a rational linear feasibility problem. Core+ implies ordinary core stability.
+\end{theorem}
+The equivalence comes from linear-programming duality (Farkas' lemma): feasibility of a payment system is dual to nonexistence of a fractional blocking coalition. For ordinary core stability, the sufficient direction has a direct charging proof:
+\begin{quote}
+If $T$ strictly improves for a coalition, each gainer can retain their old payments to $T\cap W$ and assign a reserve to enough newly approved members of $T\setminus W$ to account for their entire unit budget. So $T$ collects at least one unit per gainer. By (P4), winners receive at most $q$ each; by (P3), each formerly losing member receives strictly less than $q$. Strict improvement requires at least one such loser, so $T$ collects strictly less than $q|T|$.
+\end{quote}
+The proof problem can therefore be stated without having to understand all the duality tables: \emph{find a $k$-committee carrying (P1), (P2), and (P4), while forcing the missing loser condition (P3).}
+
+\section{The add--delete outline}
+Impose (P1), (P2), and (P4) from the outset and optimise a yet-to-be-chosen invariant $V(W)$. Suppose a losing candidate $c$ holds at least one quota of reserve,
+\[
+R_c=\sum_{i\in N_c}r_i\ge q.
+\]
+The proof is driven by two comparisons:
+\begin{description}
+\item[Addition.] Adding $c$ must increase the invariant by at least this reserve:
+\[
+V(W+c)-V(W)\ \ge\ q.
+\]
+\item[Deletion.] After $c$ has been added, some candidate $d\in W+c$ must be removable at a loss no larger than the average payment:
+\[
+V(W)-V(W+c-d)\ \le\ \frac n{k+1}.
+\]
+\end{description}
+Put together, they produce a $k$-committee $W+c-d$ with an increase of at least
+\[
+q-\frac n{k+1}>0.
+\]
+Thus an optimal $W$ cannot leave such a loser. Its optimal payment system satisfies (P3), hence certifies core+. At the Hare quota, the precise margin is $n/[k(k+1)]$.
+
+Two features explain the rest of the construction. First, (P2) makes reserve the largest payment coordinate, so a fair invariant should turn reserve into gain. Second, at the Droop threshold there is no positive margin: local optima require a separate endpoint argument and are not obtained just by taking $\delta=0$ in the algorithm below.
+
+\section{Deriving harmonic entropy}
+Recall that the objective is to obtain $V(W)$ for which addition gains at least $q$ and deletion costs at most $n/(k+1)$, while an optimal payment system satisfies (P1), (P2), and (P4). We now identify the properties that lead to harmonic entropy.
+
+\subsection{Concavity}
+The addition operation creates a candidate whose payment could violate (P4). The remedy is to dilute the water-filled system with the old system padded by a zero payment to the new candidate. If the old reserve sum is $R_c\ge q$ and $\lambda=q/R_c$, then the new candidate receives at most $\lambda R_c=q$, so the mixture is feasible.
+
+The score of this mixture should not lose more than the interpolation factor $\lambda$. The natural condition is therefore concavity,
+\[
+F((1-\lambda)x+\lambda y)\ge(1-\lambda)F(x)+\lambda F(y).
+\]
+Concavity allows a reserve-funded gain to be converted into a feasible payment system whose score is bounded below using the systems on either side. The payment polytope is also compact, convex, and nonempty, so a continuous concave objective has a maximiser.
+
+\subsection{Symmetry}
+A voter's distribution lists the reserve and payments to particular candidates. There is no mathematical reason for the score to change merely because these coordinates are permuted, nor for an exchange between equal coordinates to matter simply because their labels differ. We thus require symmetry:
+\[
+F(x_{\sigma(1)},\ldots,x_{\sigma(d)})=F(x_1,\ldots,x_d)
+\]
+for every permutation $\sigma$.
+This is both a natural modelling choice and an operational one: the proof can concentrate on the magnitudes of payments rather than on the names attached to them. It also makes transpositions and convex mixtures of transposed distributions available without changing the score.
+
+\subsection{Balance}
+Balance is not an independent axiom. Concavity and symmetry produce it automatically. For example,
+\[
+F(0.5,0.5)=F\!\left(\tfrac12(0.7,0.3)+\tfrac12(0.3,0.7)\right)
+\ge\tfrac12F(0.7,0.3)+\tfrac12F(0.3,0.7)=F(0.7,0.3).
+\]
+The same averaging over permutations gives Schur-concavity: if $x$ is majorised by $y$ (so $x$ is more balanced), then $F(x)\ge F(y)$.
+
+Now impose the payment-preservation rule: an extension can introduce one new coordinate, but no old payment may increase. Among all redistributions permitted by this restriction, seek the most balanced one. That naturally singles out the Robin Hood operation: remove excess from the largest old coordinates and put it in the new coordinate. Concretely, choose a common level $t=t_1(x)$ and write
+\[
+\Phi x=(\min\{x_j,t\})_{j\le d}\oplus t.
+\]
+This redistribution does not increase any old winner's payment and, by construction, puts the removed mass at an equally capped level. The important point is that the operation appears before any entropy formula is chosen: it is simply the least concentrated permissible extension in the majorization order. Hence, for every allowed extension $y$,
+\[
+F(\Phi x)\ge F(y).
+\]
+So Robin Hood is precisely the operation whose output maximises every symmetric concave score. Moreover, reserve dominance survives: if $r_i$ was a largest coordinate before the operation, $t\le r_i$, so the reserve remains a largest coordinate after it.
+
+The forward step needs at least the old reserve in gain, while the reverse step should lose no more than the largest coordinate, which is the payment attributable to a removed winner. The strongest and simplest version is thus
+\[
+\boxed{F(\Phi x)-F(x)=\max_jx_j.}
+\]
+
+\subsection{Base case: uniform distribution}
+Let $u_d=(1/d,\ldots,1/d)$ and normalise $F(u_1)=F(1)=0$. Water-filling preserves uniformity, $\Phi u_d=u_{d+1}$, and the reserve of $u_d$ is $1/d$. The required marginal identity therefore gives
+\[
+F(u_{d+1})=F(u_d)+\frac1d.
+\]
+Starting from zero,
+\[
+F(u_2)=1,\qquad F(u_3)=1+\frac12,\qquad
+\boxed{F(u_d)=H_{d-1}.}
+\]
+Thus the base score is exactly PAV. The harmonic numbers are not guessed: they are forced by the exact reserve identity on uniform payments.
+
+\subsection{The functional equation and its unique solution: harmonic entropy}
+For any strictly positive distribution, repeated Robin Hood operations eventually make the distribution uniform. Write $t_\ell(x)$ for the maximum coordinate after $\ell$ operations. Then
+\[
+F(\Phi^Lx)=F(x)+\sum_{\ell=0}^{L-1}t_\ell(x).
+\]
+At a sufficiently large $L$, $\Phi^Lx$ is uniform, and its value is known from the base case. Work backwards and take the limit:
+\[
+\boxed{F(x)=\sum_{\ell\ge0}\left(\frac1{\ell+1}-t_\ell(x)\right).}
+\]
+Moreover the individual levels admit the direct description
+\[
+t_\ell(x)=\max_{\varnothing\ne S\subseteq[d]}\frac{\sum_{j\in S}x_j}{|S|+\ell}.
+\]
+Thus every initial distribution determines a value, and zero-invariance leaves the normalization free only up to an additive constant. This initial function is \emph{harmonic entropy}.
+
+For example, starting with $(3/4,1/4)$ gives
+\[
+(\tfrac34,\tfrac14)\longmapsto(\tfrac38,\tfrac14,\tfrac38)
+\longmapsto u_4,\qquad
+F(\tfrac34,\tfrac14)=H_3-\frac34-\frac38=\frac{17}{24}.
+\]
+Finally, the series reveals why concavity also appears without an extra entropy-inspired guess: each $t_\ell$ is a maximum of linear functions, hence convex, and each summand $-t_\ell$ is concave. Symmetry and zero-invariance follow immediately as well. The defining exchange identity therefore has a unique concave, symmetric realisation (up to an additive constant), which recovers PAV on uniform payments and applies to arbitrary non-uniform payments.
+
+This uniqueness is within the Robin Hood/add--delete architecture. It does not assert that every imaginable core proof must use harmonic entropy.
+
+The next step is the deletion accounting at the level of a whole payment system. We give a simpler extremal proof of precisely that step.
+\section{A simpler proof of deletion (Lemma 6.4)}
+This section concerns only the original untruncated potential. The algorithm in the next sections is derived separately.
+
+For a candidate set $W$, write $x_i=(r_i,p_i)$, and let
+\[
+V(W)=\max_{(r,p)\in\calP_{124}(W)}\sum_iF(x_i).
+\]
+A winner is \emph{unsaturated} if its total payment is strictly below $q$.
+
+\begin{lemma}[Canonical de-reserved form]
+There are an optimal system $(r,p)$ and a de-reserved system $(\hat r,\hat p)$ such that every unsaturated $d\in W$ and every $i\in N_d$ satisfy
+\begin{enumerate}[label=(\alph*)]
+\item $\hat p_{id}\ge\hat p_{ic}$ for every $c\in A_i\cap W$;
+\item $F(\hat r_i,\hat p_i)=F(r_i,p_i)-\hat p_{id}$.
+\end{enumerate}
+Moreover $\hat p_{ic}\ge p_{ic}$, and (P1) and (P4) hold for $(\hat r,\hat p)$.
+\end{lemma}
+
+\begin{proof}
+\textbf{Step 1: the canonical optimum.} Among maximisers of $\sum_iF(x_i)$, choose one with minimum total reserve $\sum_ir_i$. If some unsaturated $d$ had $p_{id}<r_i$, transfer $\varepsilon$ from the reserve and from every payment equal to $r_i$ into $p_{id}$, preserving the unit total. For sufficiently small $\varepsilon$, (P1), (P2), and (P4) survive. Each move has the form $y\mapsto(1-\lambda)y+\lambda\sigma y$, where $\sigma$ swaps a larger and a smaller coordinate; symmetry and concavity prevent $F$ from decreasing. Total reserve strictly falls, a contradiction. Therefore,
+\[
+d\text{ unsaturated}\quad\Longrightarrow\quad p_{id}=r_i\quad(i\in N_d). \tag{$*$}
+\]
+
+\textbf{Step 2: a maximum-flow/minimum-square de-reservation.} Define the voter ceilings and candidate slacks by
+\[
+M_i=\{c\in A_i\cap W:p_{ic}=r_i\},\qquad
+S_c=q-\sum_jp_{jc},
+\]
+and let $\mathfrak X$ be the increments $z_{ic}\ge0$ satisfying
+\[
+z_{ic}=0\ (c\notin M_i),\qquad
+\sum_cz_{ic}\le r_i,\qquad
+\sum_iz_{ic}\le S_c.
+\]
+Choose $z\in\mathfrak X$ maximising $\sum_{i,c}z_{ic}$, and among those minimising $\sum_{i,c}z_{ic}^2$. Set $\hat p=p+z$ and $\hat r_i=r_i-\sum_cz_{ic}$. This is the entire de-reservation construction; there is no time process.
+
+Call a candidate unsaturated \emph{for $\hat p$} if $\sum_i\hat p_{ic}<q$. The following four properties are immediate from the extremal choices:
+\begin{enumerate}[label=(B\arabic*)]
+\item Nothing is raised below the original ceiling, so $\min\{\hat p_{ic},r_i\}=p_{ic}$ when $r_i>0$.
+\item Every candidate satisfies $\sum_i\hat p_{ic}\le q$.
+\item If voter $i$ approves an unsaturated candidate, then $\hat r_i=0$. Otherwise additional feasible flow could be added. If the candidate is outside the ceiling, $(*)$ already makes it saturated in $p$.
+\item Every unsaturated candidate is a maximum coordinate for each supporter. Otherwise move a small amount from a larger ceiling coordinate into the unsaturated one. Total flow is unchanged, while the sum of squares strictly decreases.
+\end{enumerate}
+The convention ``unsaturated for $\hat p$'' is essential: it is not equivalent to unsaturated for $p$.
+
+\textbf{Step 3: the Robin Hood identity backwards.} Take any unsaturated candidate $d$. For a supporter $i$, part (a) says $\hat p_{id}$ is a largest coordinate. The ceiling construction gives
+\[
+\sum_c(\hat p_{ic}-r_i)^+
+=\sum_cz_{ic}=r_i-\hat r_i,
+\qquad \min\{\hat p_{ic},r_i\}=p_{ic}.
+\]
+For supporters of the selected $d$, (B3) gives $\hat r_i=0$, so $\Phi(\hat p_i)$ is the original $(r_i,p_i)$ up to coordinate permutations and zero coordinates. The exact identity and (B4) now yield
+\[
+F(r_i,p_i)=F(\hat p_i)+\|\hat p_i\|_\infty
+=F(\hat p_i)+\hat p_{id},
+\]
+proving (b). The case $r_i=0$ gives the required inequality immediately.
+\end{proof}
+
+\begin{theorem}[Deletion]
+If $|W|\ge k+1$, then for some $d\in W$,
+\[
+V(W-d)\ge V(W)-\frac n{|W|}.
+\]
+\end{theorem}
+\begin{proof}
+Use the system from the lemma and choose $d$ minimising $T_d=\sum_i\hat p_{id}$. Since total payment is at most $n$,
+\[
+T_d\le\frac n{|W|}<q,
+\]
+so $d$ is unsaturated and every supporter has zero de-reserved reserve. For each $i\in N_d$, rename $\hat p_{id}$ as reserve and remove $d$ from the committee; for $i\notin N_d$, keep the original $x_i$. The new system is feasible by (a), (B3), and (B4). Its total value is at least
+\[
+V(W)-T_d\ge V(W)-\frac n{|W|}.
+\]
+Hence $V(W-d)$ is at least this value.
+\end{proof}
+
+The main simplification is not a different bound; it is a different construction. Maximum flow replaces the continuous stages, minimum squares replaces the saturation bookkeeping, and one reverse Robin Hood identity supplies the accounting.
+
+\section{A separate track: the faster algorithm}
+The paper's original Algorithm 1 starts with an arbitrary $k$-set and performs single-candidate swaps that increase the truncated value $V_L$ by at least $\delta/2$, where $\delta=q-n/(k+1)$. It takes $L=\lceil2nk/\delta\rceil$, so the error $nk/L$ from truncating harmonic entropy is at most $\delta/2$. If no such swap exists, every true swap improvement is below $\delta$, and the committee is core+. Since $0\le V_L\le n(1+\log k)$, there are at most $O(n\log k/\delta)$ accepted swaps. At the Hare quota this uses $L=\Theta(k^3)$ levels, a dense LP of size $O(nk^4)$ per evaluation, and $k(m-k)$ neighbours in a full swap scan.
+
+The faster algorithm replaces this neighbourhood search by certificate-guided repair and makes three further changes:
+\begin{enumerate}
+\item \textbf{Violation-guided repair.} Check loser reserves directly instead of evaluating every swap. A violating loser determines which candidate to add and temporarily creates a $(k+1)$-set.
+\item \textbf{Quadratic truncation loss.} A committee-dependent correction changes the effective addition error from $O(U/L)$ to $O(U/L^2)$, allowing the level $L=\Theta(k^{3/2})$ instead of $\Theta(k^3)$.
+\item \textbf{One target-feasibility LP per repair.} Carry a feasible payment system and a valid lower bound on its score. A single minimum-reserve LP meets the new score target; no complete neighbourhood or second optimising LP is required.
+\end{enumerate}
+We now derive these statements independently of the preceding untruncated deletion proof.
+
+\subsection{The optimised potential}
+With $F_L$ and $t_\ell$ as above, $s_i(W)=u_i(W)+1$, and $H_j=\sum_{a=1}^j1/a$, define
+\[
+C_L(s)=\sum_{h=1}^{s-1}\frac1{L+h}=H_{s+L-1}-H_L,\qquad
+G_L^{(s)}(x)=F_L(x)+C_L(s).
+\]
+The correction is constant within one committee LP. We set
+\[
+\tV_L(W)=\max_{x\in\calP_{124}(W)}\sum_iG_L^{(s_i(W))}(x_i).
+\]
+The one-step identity becomes
+\[
+G_L^{(s+1)}(\Phi x)-G_L^{(s)}(x)=\|x\|_\infty-e_L(x),
+\]
+where
+\[
+e_L(x)=t_L(x)-\frac1{s+L},\qquad
+0\le e_L(x)\le\frac{s-1}{(L+1)(s+L)}\le\frac{s-1}{(L+1)^2}.
+\]
+Also $0\le\tV_L(W)\le\barV$, where $\barV=\sum_iH_{\min(|A_i|,k)}\le n(1+\log k)$.
+
+\subsection{Optimised addition}
+For any current feasible system with $\sum_{i\in N_c}r_i\ge q$, the same $\Phi$ operation and mixture $\lambda=q/R_c$ imply
+\[
+\tV_L(W+c)\ \ge\ \sum_iG_L^{(s_i(W))}(x_i)+q-\frac{E_c(W)}{(L+1)^2},
+\]
+where $E_c(W)=\sum_{i\in N_c}u_i(W)$. Indeed, mixture concavity and the correction contribute the gain
+\[
+q-\lambda\sum_{i\in N_c}t_L(x_i)+\sum_{i\in N_c}\frac1{s_i+L}
+ \ge q-\sum_{i\in N_c}e_L(x_i).
+\]
+Consequently, if $\ell$ is a valid lower bound on the current score, the target
+\[
+\tau=\ell+q-\frac{E_c(W)}{(L+1)^2}
+\]
+is feasible for some payment system on $W+c$.
+
+\subsection{Standard deletion and code audit}
+On a $(k+1)$-set, de-reserve a minimum-reserve target-feasible system, choose a candidate with minimum total de-reserved payment, and remove it. The optimised inverse identity is
+\[
+G_s(\hat p_i)-G_{s+1}(\Phi\hat p_i)=-p+e_L(\hat p_i)\ge-p,
+\]
+so the same deletion argument replaces $F$ by $G_L$ and loses at most $n/(k+1)$ in total. For clarity: the earlier sharpened claim $n/(k+2)$ is false and the code does not use it. This distinction is necessary because an earlier implementation applied reserve dominance after de-reservation, where it need not hold.
+
+\subsection{The optimised repair loop}
+Set $\delta=q-n/(k+1)$, $b=\sum_i|A_i|$, $U=\min\{b,nk\}$, and
+\[
+L=\Bigl\lceil\sqrt{\frac{2U}{\delta}}\Bigr\rceil.
+\]
+Filter candidates with degree below $q$ (these can never violate (P3)):
+if at most $k$ high-degree candidates remain, include all of them and return zero payments. Otherwise restrict the search to high-degree candidates and perform:
+
+\begin{lstlisting}[style=plaincode,caption={One-LP-per-repair algorithm}]
+start with any k-set W, zero payments, and a valid lower bound ell
+repeat:
+    if all loser reserve sums are < q:
+        return W and the carried certificate
+    choose a violating loser c; X = W + c
+    tau = ell + q - E_c(W)/(L+1)^2
+    solve ONE LP: minimise total reserve on X
+        subject to (P1),(P2),(P4), and optimised score >= tau
+    de-reserve and delete a candidate d of minimum total payment
+    W = X - d
+    ell = actual optimised score of the reconstructed system
+\end{lstlisting}
+The code checks directly at the LP target and after deletion that its actual optimised score meets the proved bounds. Carrying that actual value is stronger than carrying merely the floor $\tau-n/(k+1)$ and requires no additional LP.
+
+\subsection{The LP itself}
+Let $\mathcal I_X$ be active voters and write $Z=\sum_{i\in\mathcal I_X}\sum_{\ell<L}t_{i\ell}$. For every active voter use payment constraints and nonnegative auxiliaries $a_{ij\ell}$ satisfying
+\[
+a_{ij\ell}\ge x_{ij}-t_{i\ell},\qquad
+\sum_ja_{ij\ell}\le\ell t_{i\ell}.
+\]
+For
+\[
+C_X=\sum_i C_L(s_i(X)),
+\]
+the target $\sum_iG_L(x_i)\ge\tau$ becomes one linear constraint
+\[
+Z\le|\mathcal I_X|H_L+C_X-\tau.
+\]
+The objective is $\min\sum_ir_i$. Since water-level variables can be reduced to their minimal feasible values, they represent the actual $t_\ell(x_i)$ at optimum. All LP coefficients are rational, so rational LP methods apply.
+
+\section{Time complexity}
+The bound proved here is a bound on LP size and number of LP calls, not a claim about a particular solver's wall-clock exponent. Write $\LP(s,\beta)$ for the time needed to solve an rational LP of size $s$ with coefficient bit length $\beta$.
+
+\subsection{Rounds}
+Every non-returning round increases the optimised score by more than $\delta/2$:
+\[
+\ell_{\rm new}
+\ge \ell+q-\frac n{k+1}-\frac{E_c(W)}{(L+1)^2}
+=\ell+\delta-\frac{E_c(W)}{(L+1)^2}
+>\ell+\frac\delta2.
+\]
+Indeed $E_c(W)\le U$, while $L+1>\sqrt{2U/\delta}$ ensures $U/(L+1)^2<\delta/2$. The final exit takes no LP. Since $0\le\ell\le\barV$, the algorithm uses at most
+\[
+\boxed{N_{\LP}\le1+\Bigl\lfloor\frac{2\barV}{\delta}\Bigr\rfloor}
+\]
+LPs. In particular, $N_{\LP}=O(k^2\log k)$. If $d$ equals the newly added candidate, the committee may not change, but the carried score still increases, so the argument remains valid.
+
+\subsection{Size of one LP}
+A voter with $s_i(X)$ coordinates contributes $L$ water levels and $O(s_i(X)L)$ auxiliaries. Thus, with $E_X=\sum_iu_i(X)$, one LP has $O((n+E_X)L)$ variables and constraints. At the Hare quota, $U=nk$ and $\delta=n/[k(k+1)]$ in the dense worst case, so
+\[
+L=\Bigl\lceil\sqrt{2k^2(k+1)}\Bigr\rceil=\Theta(k^{3/2}),
+\qquad \boxed{O((n+E_X)L)=O(nk^{5/2}).}
+\]
+
+\subsection{Total arithmetic and LP work}
+Event-driven de-reservation takes $O((n+U)\log(n+k))$ queue operations per repair. Reserve scans and recomputing the optimised value cost $O(b)$. Therefore the entire procedure has derived cost
+\[
+\boxed{
+O\!\left(k^2\log k\left[
+\LP\!\left(O(nk^{5/2}),\beta\right)+b+(n+U)\log(n+k)
+\right]\right),}
+\]
+plus preprocessing and output, with bit length $\beta$ polynomial in the input encoding and $L$. In geometric terms, $LP(nk^{5/2})$ denotes an LP \emph{of size} $O(nk^{5/2})$, not an assertion that every possible LP solver takes precisely that many arithmetic operations.
+
+For comparison, the original neighbourhood search uses $L=\Theta(k^3)$, dense LP size $O(nk^4)$, and examines $k(m-k)$ neighbours at each round. Counting $(R+1)(k(m-k)+1)$ solves across the successful rounds and final scan gives $O(k^3(m-k)\log k)$ LPs. The reduction in this accounting is not an assertion that either derived bound is optimal.
+
+\clearpage
+\section{Conclusion, interactive explainers, and verification}
+There are two takeaways. The exchange requirements determine harmonic entropy: interpolation motivates concavity, concavity and symmetry make balance a consequence, Robin Hood is score-optimal among permissible extensions, and the resulting recurrence forces the harmonic numbers. The simplified deletion argument then needs only an extremal flow/minimum-square point and one reverse entropy identity. Separately, the optimised truncation and target-carrying repair give a core+ algorithm with one LP of size $O(nk^{5/2})$ per repair and $O(k^2\log k)$ repair rounds.
+
+We also created a website with an interactive proof and algorithm explainer. It presents the payment picture and Robin Hood redistribution visually and lets the algorithm be inspected as an add--delete process rather than as a black-box LP. The report is fully self-contained and does not depend on the website.
+
+The complete implementation is included in the appendix and is also stored in the workspace as \path{results/nk52/core_algorithm_nk52.py}. It uses rational arithmetic, checks (P1)--(P4) at return, and recomputes the optimised score independently of the LP model. Validation used Python 3.12.14 and z3 5.4.1: four targeted profiles (including the deletion counterexample and a disputed repair profile) plus 30 seeded random profiles with $2\le m\le6$, $2\le n\le8$, sampled $1\le k<m$, and densities $0.25,0.5,0.8,1.0$. There were 18 repairs in total, maximum observed truncation level 13, and all 34 outputs passed certificate checks and exhaustive ordinary-core checks. These are implementation tests over the stated ranges, not substitutes for the proof.
+
+Open Math OS AI research agents and Ultramath members using \texttt{deepseek/deepseek-v4.1-flash} were used for exposition, algorithm derivation, code synthesis, and testing. Python and z3 provided rational computation and LP checks. Outputs were validated by reviewing the mathematics, rational arithmetic, regression runs, and a separate standalone LaTeX build. The preprint supplies the original theorem and local-search basis; the simplification, optimised algorithm, code, and interactive explainers are the event work. No Lean dependence is asserted in this report.
+
+\begin{thebibliography}{9}
+\bibitem{bgp}
+Patrick Becker, Matthias Greger, and Dominik Peters.
+\emph{Existence of the Core in Approval-Based Committee Elections}.
+arXiv:2609.11912v2 [cs.GT], 3 November 2026.
+\href{https://arxiv.org/abs/2609.11912v2}{https://arxiv.org/abs/2609.11912v2}.
+
+\bibitem{simplified}
+Project research note.
+\emph{Deleting a candidate, without the water-filling process}.
+\path{results/delete-lemma-simplified.md}. Source of the maximum-flow/minimum-square proof presented in Section 5, including the convention that unsaturation is evaluated for $\hat p$.
+
+\bibitem{accelerated}
+Project research notes.
+\emph{Further acceleration: square-root truncation and $O(nk^{5/2})$ LPs} and
+\emph{A core committee in polynomial time: the algorithm, its complexity, and where the slack is}.
+\path{results/core-algorithm-accelerated.md}, \path{results/core-algorithm-best.md}. Basis for the optimised potential, addition estimate, and carried-target repair; the code uses only the proved standard deletion bound.
+
+\bibitem{motivation}
+Project research note.
+\emph{Why harmonic entropy is natural in the core proof}.
+\path{results/harmonic-entropy-motivation.md}. Source for the PAV prototype and synthesis of the discovery process in Section 4. The presentation of balance and Schur-concavity is an analytic reconstruction, not a claim about the authors' historical thought process.
+
+\bibitem{short}
+Project research note.
+\emph{The core of approval-based committee elections: a short proof, and what is forced}.
+\path{core-short.md}. Reference for water levels, exact gain, certificate charging, and de-reservation.
+\end{thebibliography}
+
+\clearpage
+\appendix
+\section{Complete rational implementation}
+\begingroup
+\small
+\begin{lstlisting}[style=code,language=Python,caption={Conservative $O(nk^{5/2})$-sized-LP implementation, inlined for a self-contained report}]
+#!/usr/bin/env python3
+"""Compute a core+ committee with the conservative O(n*k^(5/2)) algorithm.
+
+Requires: z3-solver
+
+Input JSON:
+    {"m": 3, "k": 2, "A": [[0, 2], [0, 1]]}
+
+Here A[i] is voter i's approval set, candidates are numbered 0,...,m-1,
+and q=n/k is the Hare quota.
+
+Usage:
+    python3 results/nk52/core_algorithm_nk52.py input.json --verify-core
+
+The optimised truncated potential uses C_L(s)=H_{s+L-1}-H_L.  Deletion uses
+the standard n/(k+1) bound (NOT n/(k+2)).  Every repair costs one rational LP.  After every repair the code independently recomputes the
+optimised potential by water levels, then carries that actual value.
+
+The implementation deliberately prioritises rational arithmetic and auditability over
+wall-clock speed.
+"""
+
+from __future__ import annotations
+
+import argparse
+import heapq
+import itertools
+import json
+import math
+from fractions import Fraction
+from pathlib import Path
+from typing import Iterable
+
+import z3
+
+
+def ceil_fraction(x: Fraction) -> int:
+    return (x.numerator + x.denominator - 1) // x.denominator
+
+
+def harmonic(x: int) -> Fraction:
+    return sum((Fraction(1, j) for j in range(1, x + 1)), Fraction(0))
+
+
+def ceil_sqrt_fraction(x: Fraction) -> int:
+    """Return ceil(sqrt(x)) without floating-point arithmetic."""
+    if x < 0:
+        raise ValueError("Square root of a negative rational")
+    if x == 0:
+        return 0
+    root = math.isqrt(x.numerator // x.denominator)
+    while root > 0 and root * root * x.denominator >= x.numerator:
+        root -= 1
+    while root * root * x.denominator < x.numerator:
+        root += 1
+    return root
+
+
+def as_z3(x: Fraction | int):
+    x = Fraction(x)
+    return z3.RealVal(x.numerator) / z3.RealVal(x.denominator)
+
+
+def zsum(terms: Iterable):
+    return sum(terms, z3.RealVal(0))
+
+
+def z3_to_fraction(value) -> Fraction:
+    """Convert an integer or rational z3 numeral."""
+    value = z3.simplify(value)
+    if z3.is_int_value(value):
+        return Fraction(value.as_long())
+    if z3.is_rational_value(value):
+        return Fraction(value.numerator_as_long(), value.denominator_as_long())
+    raise ArithmeticError(f"Non-rational value: {value}")
+
+
+def from_model(model, variable) -> Fraction:
+    return z3_to_fraction(model.eval(variable, model_completion=True))
+
+
+class HarmonicLP:
+    """LP for the raw truncated value and minimum-reserve targets."""
+
+    def __init__(self, approvals: list[set[int]], quota: Fraction, L: int):
+        if L < 1:
+            raise ValueError("The main LP requires L >= 1")
+        self.A = approvals
+        self.n = len(approvals)
+        self.q = quota
+        self.L = L
+        self.H_L = harmonic(L)
+
+    def solve(self, committee: set[int], fix_z: Fraction | None = None,
+              z_upper: Fraction | None = None):
+        """Return (V_L, reserves, payments, Z).
+
+        If fix_z is None and z_upper is None, maximize truncated harmonic
+        entropy, encoded as minimizing Z=sum(t[i,ell]).
+
+        If fix_z=Z*, minimize total reserve subject to Z=Z*.
+        If z_upper=Z0, minimize total reserve subject to Z<=Z0. The latter
+        is the one-LP target-feasibility mode used by nk52_core.
+        """
+        X = set(committee)
+        active = [i for i in range(self.n) if self.A[i] & X]
+
+        # An uncovered voter has reserve 1, no payments, and F_L=0.
+        if not active:
+            reserves = [Fraction(1) for _ in range(self.n)]
+            return Fraction(0), reserves, {}, Fraction(0)
+
+        opt = z3.Optimize()
+        r = {i: z3.Real(f"r_{i}") for i in active}
+        p = {(i, c): z3.Real(f"p_{i}_{c}")
+             for i in active for c in sorted(self.A[i] & X)}
+        t = {(i, ell): z3.Real(f"t_{i}_{ell}")
+             for i in active for ell in range(self.L)}
+        a = {(i, ell, c): z3.Real(f"a_{i}_{ell}_{'r' if c is None else c}")
+             for i in active
+             for ell in range(self.L)
+             for c in [None] + sorted(self.A[i] & X)}
+
+        for variable in itertools.chain(r.values(), p.values(), t.values(), a.values()):
+            opt.add(variable >= 0)
+
+        # (P1): each voter splits one unit between reserve and payments.
+        for i in active:
+            opt.add(r[i] + zsum(p[i, c] for c in sorted(self.A[i] & X)) == 1)
+
+        # (P2): a payment never exceeds the reserve.
+        for i, c in p:
+            opt.add(p[i, c] <= r[i])
+
+        # (P4): each winner receives at most quota q in total.
+        for c in X:
+            terms = [p[i, c] for i in active if (i, c) in p]
+            if terms:
+                opt.add(zsum(terms) <= as_z3(self.q))
+
+        # Water levels. t[i,ell] represents t_ell(r_i,p_i).
+        # The objective coefficient of every t[i,ell] is ONE.
+        for i in active:
+            coordinates = [None] + sorted(self.A[i] & X)
+            payment_var = {c: p[i, c] for c in sorted(self.A[i] & X)}
+            for ell in range(self.L):
+                water = t[i, ell]
+                for c in coordinates:
+                    original = r[i] if c is None else payment_var[c]
+                    auxiliary = a[i, ell, c]
+                    opt.add(auxiliary >= original - water)
+                opt.add(zsum(a[i, ell, c] for c in coordinates) <= ell * water)
+
+        if fix_z is not None and z_upper is not None:
+            raise ValueError("fix_z and z_upper are mutually exclusive")
+        Z = zsum(t.values())
+        z_handle = None
+        if fix_z is None and z_upper is None:
+            z_handle = opt.minimize(Z)
+        else:
+            if fix_z is not None:
+                opt.add(Z == as_z3(fix_z))
+            else:
+                opt.add(Z <= as_z3(z_upper))
+            opt.minimize(zsum(r.values()))
+
+        if opt.check() != z3.sat:
+            raise ArithmeticError("LP was not solved to optimality")
+
+        model = opt.model()
+        z_value = sum((from_model(model, var) for var in t.values()), Fraction(0))
+        if fix_z is not None and z_value != fix_z:
+            raise ArithmeticError("Secondary LP lost the primary optimum")
+        if z_upper is not None and z_value > z_upper:
+            raise ArithmeticError("Target-feasibility LP exceeded the entropy floor")
+
+        # If available, independently check Optimize's stored optimum bound.
+        if z_handle is not None:
+            bound = opt.lower(z_handle)
+            bound_fraction = z3_to_fraction(bound)
+            if bound_fraction != z_value:
+                raise ArithmeticError("LP model and optimum bound disagree")
+
+        reserves = [from_model(model, r[i]) if i in active else Fraction(1)
+                    for i in range(self.n)]
+        payments = {key: from_model(model, var) for key, var in p.items()}
+        V = len(active) * self.H_L - z_value
+        return V, reserves, payments, z_value
+
+
+def dereserve(approvals, X, quota, reserves, payments):
+    """Event-driven water-filling in O((E+n+k) log(n+k)) queue work."""
+    n, X, t = len(approvals), set(X), Fraction(0)
+    r, p = list(reserves), dict(payments)
+    supporters = {c: [i for i in range(n) if c in approvals[i]] for c in X}
+    totals = {c: sum((p.get((i, c), Fraction(0)) for i in supporters[c]),
+                     Fraction(0)) for c in X}
+    open_c = {c for c in X if totals[c] < quota}
+
+    active = [r[i] > 0 and bool(approvals[i] & open_c) for i in range(n)]
+    pair, pair_anchor = {}, {}
+    for i in range(n):
+        for c in approvals[i] & X:
+            pair[i, c] = active[i] and c in open_c
+            pair_anchor[i, c] = t
+    width = {i: len(approvals[i] & open_c) if active[i] else 0
+             for i in range(n)}
+    demand = {c: sum(active[i] for i in supporters[c]) for c in X}
+    r_anchor = [t] * n
+    p_anchor = {c: t for c in X}
+    voter_heap, cand_heap = [], []
+    voter_ver, cand_ver = [0] * n, {c: 0 for c in X}
+
+    def push_voter(i):
+        voter_ver[i] += 1
+        if active[i] and width[i] > 0 and r[i] > 0:
+            heapq.heappush(voter_heap,
+                           (t + r[i] / width[i], i, voter_ver[i]))
+
+    def push_candidate(c):
+        cand_ver[c] += 1
+        if c in open_c and demand[c] > 0 and totals[c] < quota:
+            heapq.heappush(cand_heap,
+                           (t + (quota - totals[c]) / demand[c], c, cand_ver[c]))
+
+    for i in range(n):
+        push_voter(i)
+    for c in X:
+        push_candidate(c)
+
+    def materialize_voter(i, time):
+        if active[i] and width[i] > 0:
+            r[i] -= width[i] * (time - r_anchor[i])
+            r_anchor[i] = time
+
+    def materialize_candidate(c, time):
+        if c in open_c and demand[c] > 0:
+            totals[c] += demand[c] * (time - p_anchor[c])
+            p_anchor[c] = time
+
+    def switch_pair(i, c, turn_on, time):
+        if (i, c) not in pair:
+            return
+        if pair[i, c] and not turn_on:
+            p[i, c] = p.get((i, c), Fraction(0)) + time - pair_anchor[i, c]
+            pair_anchor[i, c] = time
+            pair[i, c] = False
+        elif turn_on and not pair[i, c]:
+            pair_anchor[i, c] = time
+            pair[i, c] = True
+
+    def close_candidate(c, time):
+        if c not in open_c:
+            return
+        materialize_candidate(c, time)
+        if totals[c] != quota:
+            raise ArithmeticError("Candidate closed away from its quota")
+        open_c.remove(c)
+        cand_ver[c] += 1
+        for i in supporters[c]:
+            if active[i]:
+                materialize_voter(i, time)
+                width[i] -= 1
+                r_anchor[i] = time
+                switch_pair(i, c, False, time)
+                push_voter(i)
+                if r[i] == 0:
+                    deactivate_voter(i, time)
+
+    def deactivate_voter(i, time):
+        if not active[i]:
+            return
+        materialize_voter(i, time)
+        if r[i] != 0:
+            raise ArithmeticError("Voter deactivated with a positive reserve")
+        active[i] = False
+        voter_ver[i] += 1
+        width[i] = 0
+        for c in list(approvals[i] & open_c):
+            materialize_candidate(c, time)
+            demand[c] -= 1
+            p_anchor[c] = time
+            switch_pair(i, c, False, time)
+            push_candidate(c)
+            if totals[c] == quota:
+                close_candidate(c, time)
+
+    while True:
+        while voter_heap:
+            tau, i, version = voter_heap[0]
+            if (not active[i] or width[i] == 0 or version != voter_ver[i]
+                    or r[i] <= 0
+                    or tau != r_anchor[i] + r[i] / width[i]):
+                heapq.heappop(voter_heap)
+            else:
+                break
+        while cand_heap:
+            tau, c, version = cand_heap[0]
+            if (c not in open_c or demand[c] == 0
+                    or version != cand_ver[c] or totals[c] >= quota
+                    or tau != p_anchor[c] + (quota - totals[c]) / demand[c]):
+                heapq.heappop(cand_heap)
+            else:
+                break
+        if not voter_heap and not cand_heap:
+            break
+        next_voter = voter_heap[0][0] if voter_heap else None
+        next_cand = cand_heap[0][0] if cand_heap else None
+        time = min(x for x in (next_voter, next_cand) if x is not None)
+        if time < t:
+            raise ArithmeticError("De-reservation time moved backwards")
+        t = time
+        if next_voter is not None and next_voter == t:
+            _, i, version = heapq.heappop(voter_heap)
+            if active[i] and version == voter_ver[i] and width[i] > 0 and r[i] > 0:
+                materialize_voter(i, t)
+                if r[i] == 0:
+                    deactivate_voter(i, t)
+        elif next_cand is not None and next_cand == t:
+            _, c, version = heapq.heappop(cand_heap)
+            if c in open_c and version == cand_ver[c] and demand[c] > 0:
+                materialize_candidate(c, t)
+                close_candidate(c, t)
+
+    for i in range(n):
+        for c in approvals[i] & X:
+            if pair.get((i, c), False):
+                p[i, c] = p.get((i, c), Fraction(0)) + t - pair_anchor[i, c]
+                pair_anchor[i, c] = t
+                pair[i, c] = False
+    return r, p
+
+
+def optimised_value(approvals, committee, reserves, payments, L, H):
+    """Return sum G_L(x_i) using sorted-prefix water levels.
+
+    H[j] must equal the harmonic number H_j for 0 <= j < len(H).  This is a
+    direct O(n*k*log(k)) evaluation, not an LP solve.
+    """
+    committee = set(committee)
+    total = Fraction(0)
+    for i, ballot in enumerate(approvals):
+        coordinates = [reserves[i]] + [
+            payments.get((i, c), Fraction(0)) for c in sorted(ballot & committee)
+        ]
+        coordinates.sort(reverse=True)
+        prefix = Fraction(0)
+        t = []
+        for ell in range(L):
+            prefix = Fraction(0)
+            best = Fraction(0)
+            for r, value in enumerate(coordinates, 1):
+                prefix += value
+                best = max(best, prefix / (r + ell))
+            t.append(best)
+        s = len(coordinates)
+        total += H[L] - sum(t, Fraction(0))
+        total += H[L + s - 1] - H[L]
+    return total
+
+
+def nk52_core(approvals, m, k):
+    """Conservative one-LP-per-repair construction with certificates."""
+    A = [set(x) for x in approvals]
+    n = len(A)
+    quota = Fraction(n, k)
+    delta = quota - Fraction(n, k + 1)
+    support = [{i for i in range(n) if c in A[i]} for c in range(m)]
+    high = [c for c in range(m) if len(support[c]) >= quota]
+
+    # Low-degree candidates can never gather q units of reserve.
+    if len(high) <= k:
+        W = set(high)
+        for c in range(m):
+            if len(W) == k:
+                break
+            W.add(c)
+        certificate = ([Fraction(1)] * n, {})
+        check_certificate_for_m(A, m, W, quota, *certificate)
+        return {"committee": sorted(W), "rounds": 0, "lp_solves": 0,
+                "L": 0, "certificate": certificate}
+
+    # Work only with high-degree candidates. Any resulting certificate also
+    # works for removed candidates, since all reserves are at most one.
+    candidates = high
+    candidate_set = set(candidates)
+    approval_incidences = sum(len(A[i] & candidate_set) for i in range(n))
+    U = min(approval_incidences, n * k)
+    L = max(1, ceil_sqrt_fraction(2 * U / delta))
+    lp = HarmonicLP(A, quota, L)
+    W = set(candidates[:k])
+
+    # Carry a feasible payment system. The zero-payment system is feasible.
+    reserves = [Fraction(1)] * n
+    payments = {}
+    lower = Fraction(0)          # certified lower bound on optimised entropy
+    rounds = 0
+    lp_solves = 0
+    # Standard deletion: after de-reservation some candidate can be deleted
+    # at cost at most n/(k+1). The remaining truncation budget is delta/2.
+    deletion_gain = quota - Fraction(n, k + 1)
+    gamma = deletion_gain - delta / 2
+    potential_cap = sum((harmonic(min(len(A[i]), k)) for i in range(n)),
+                        Fraction(0)) / gamma
+    max_rounds = math.floor(potential_cap)
+
+    # H_0,...,H_{L+k}; the dimension correction is a difference of these.
+    H = [harmonic(j) for j in range(L + k + 2)]
+
+    while True:
+        if rounds > max_rounds:
+            raise ArithmeticError("Round bound exceeded")
+
+        reserve_sum = {c: sum((reserves[i] for i in support[c]), Fraction(0))
+                       for c in candidates if c not in W}
+        violations = [c for c, amount in reserve_sum.items() if amount >= quota]
+        if not violations:
+            check_certificate_for_m(A, m, W, quota, reserves, payments)
+            return {"committee": sorted(W), "rounds": rounds,
+                    "lp_solves": lp_solves, "L": L,
+                    "certificate": (reserves, payments)}
+
+        # Prefer the violating loser with the smallest certified addition
+        # loss. Any violation is valid for correctness; this choice raises
+        # the carried entropy target and improves practical progress.
+        supporter_utility = {v: sum(len(A[i] & W) for i in support[v])
+                             for v in violations}
+        c = min(violations, key=lambda v: (supporter_utility[v], v))
+        X = W | {c}
+
+        # Feasibility is guaranteed by the optimised addition lemma. The
+        # carried system need not itself be an optimizer of W.
+        addition_loss = Fraction(supporter_utility[c], (L + 1) ** 2)
+        target = lower + quota - addition_loss
+
+        # Correction C_L(s)=sum_{h=1}^{s-1}1/(L+h) for s=u_i(X)+1.
+        correction_X = sum((H[L + len(A[i] & X)] - H[L] for i in range(n)),
+                           Fraction(0))
+        active_X = sum(bool(A[i] & X) for i in range(n))
+        z_upper = active_X * H[L] + correction_X - target
+
+        # ONE LP: minimum total reserve among systems whose optimised
+        # entropy is at least target.
+        _, rX, pX, _ = lp.solve(X, z_upper=z_upper)
+        lp_solves += 1
+        actual_X = optimised_value(A, X, rX, pX, L, H)
+        if actual_X < target:
+            raise ArithmeticError("LP solution missed the optimised entropy target")
+
+        rhat, phat = dereserve(A, X, quota, rX, pX)
+        totals = {d: sum((phat.get((i, d), Fraction(0)) for i in range(n)),
+                         Fraction(0)) for d in X}
+        d = min(X, key=lambda candidate: (totals[candidate], candidate))
+
+        Wn = X - {d}
+        new_reserves = [Fraction(0)] * n
+        new_payments = {}
+        for i in range(n):
+            if d in A[i]:
+                # Delete d's payment coordinate and rename it as reserve.
+                new_reserves[i] = phat.get((i, d), Fraction(0))
+                source_r, source_p = rhat, phat
+            else:
+                new_reserves[i] = rX[i]
+                source_r, source_p = rX, pX
+            for cc in A[i] & Wn:
+                new_payments[i, cc] = source_p.get((i, cc), Fraction(0))
+
+        # The standard deletion lemma certifies the next lower bound.  Check
+        # it independently by water levels, then carry the actual value.
+        certified_floor = target - Fraction(n, k + 1)
+        actual = optimised_value(A, Wn, new_reserves, new_payments, L, H)
+        if actual < certified_floor:
+            raise ArithmeticError("Deletion fell below the certified entropy floor")
+        lower = actual
+        W, reserves, payments = Wn, new_reserves, new_payments
+        rounds += 1
+
+
+
+def assert_certificate(approvals, W, quota, reserves, payments):
+    """Check (P1), (P2), and (P4)."""
+    n = len(approvals)
+    for i in range(n):
+        assert reserves[i] >= 0
+        spent = sum((payments.get((i, c), Fraction(0)) for c in approvals[i] & W),
+                    Fraction(0))
+        assert reserves[i] + spent == 1
+        for c in approvals[i] & W:
+            p = payments.get((i, c), Fraction(0))
+            assert 0 <= p <= reserves[i]
+    for c in W:
+        paid = sum((payments.get((i, c), Fraction(0)) for i in range(n)), Fraction(0))
+        assert paid <= quota
+
+
+def check_certificate_for_m(approvals, m, W, quota, reserves, payments):
+    """Complete certificate check, including every losing candidate 0,...,m-1."""
+    assert_certificate(approvals, W, quota, reserves, payments)
+    for c in set(range(m)) - W:
+        available = sum((reserves[i] for i in range(len(approvals)) if c in approvals[i]),
+                        Fraction(0))
+        assert available < quota
+
+
+def is_core(approvals, m, W):
+    """Exhaustive ordinary-core checker, intended only for small m."""
+    A = [set(x) for x in approvals]
+    n = len(A)
+    W = set(W)
+    utilities = [len(a & W) for a in A]
+    for size in range(1, m + 1):
+        for proposal in itertools.combinations(range(m), size):
+            T = set(proposal)
+            supporters = sum(len(A[i] & T) > utilities[i] for i in range(n))
+            if supporters * len(W) >= n * size:
+                return False, {"proposal": sorted(T), "supporters": supporters}
+    return True, None
+
+
+def validate_input(data):
+    if not {"m", "k", "A"} <= data.keys():
+        raise ValueError("Input must contain m, k, and A")
+    m, k, raw_A = data["m"], data["k"], data["A"]
+    if not isinstance(m, int) or not isinstance(k, int) or not (1 <= k <= m):
+        raise ValueError("Require integers 1 <= k <= m")
+    if not isinstance(raw_A, list) or not raw_A:
+        raise ValueError("A must be a nonempty list of approval sets")
+    A = []
+    for ballot in raw_A:
+        if not isinstance(ballot, list) or len(set(ballot)) != len(ballot):
+            raise ValueError("Each ballot must be a list of distinct candidates")
+        ballot = set(ballot)
+        if any(not isinstance(c, int) or not 0 <= c < m for c in ballot):
+            raise ValueError("Candidate IDs must be integers in [0,m)")
+        A.append(ballot)
+    return A, m, k
+
+
+def printable(result, approvals, m, k, verify=False):
+    W = set(result["committee"])
+    quota = Fraction(len(approvals), k)
+    out = {key: value for key, value in result.items() if key != "certificate"}
+    certificate = result["certificate"]
+    if certificate is not None:
+        reserves, payments = certificate
+        check_certificate_for_m(approvals, m, W, quota, reserves, payments)
+        out["certificate"] = {
+            "reserves": {str(i): str(reserves[i]) for i in range(len(approvals))},
+            "payments": {
+                str(i): {str(c): str(payments.get((i, c), Fraction(0)))
+                         for c in sorted(approvals[i] & W)}
+                for i in range(len(approvals)) if approvals[i] & W
+            },
+        }
+        out["certificate_verified"] = True
+    if verify:
+        if m > 24:
+            raise ValueError("--verify-core is exponential in m; refusing m > 24")
+        ok, witness = is_core(approvals, m, W)
+        out["ordinary_core_verified"] = ok
+        if not ok:
+            out["core_violation"] = witness
+    return out
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("input", type=Path, help="JSON file containing m, k, A")
+    parser.add_argument("--verify-core", action="store_true",
+                        help="Exhaustively verify ordinary core stability (small m only)")
+    args = parser.parse_args()
+    approvals, m, k = validate_input(json.loads(args.input.read_text()))
+    if k == m:
+        result = {"committee": list(range(m)), "rounds": 0,
+                  "lp_solves": 0, "L": 0,
+                  "certificate": ([Fraction(1)] * len(approvals), {})}
+    else:
+        result = nk52_core(approvals, m, k)
+    print(json.dumps(printable(result, approvals, m, k, args.verify_core), indent=2))
+
+
+if __name__ == "__main__":
+    main()
+\end{lstlisting}
+\endgroup
+\end{document}
