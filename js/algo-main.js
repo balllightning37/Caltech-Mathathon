@@ -4,18 +4,7 @@ import {
   mountAlgorithmFigure, mountDereserveFigure, mountCostFigure,
 } from './figures/algofig.js';
 import { mountRunnerFigure } from './figures/runner.js';
-
-function renderMath() {
-  if (typeof window.renderMathInElement !== 'function') return;
-  window.renderMathInElement(document.body, {
-    delimiters: [
-      { left: '\\[', right: '\\]', display: true },
-      { left: '\\(', right: '\\)', display: false },
-    ],
-    throwOnError: false,
-    ignoredClasses: ['mono'],
-  });
-}
+import { renderMathWhenReady } from './math-render.js';
 
 function mount(id, fn) {
   const host = document.getElementById(id);
@@ -35,5 +24,4 @@ mount('fig-a2-host', mountDereserveFigure);
 mount('fig-a3-host', mountCostFigure);
 mount('fig-a4-host', mountRunnerFigure);
 
-if (document.readyState === 'complete') renderMath();
-else window.addEventListener('load', renderMath);
+renderMathWhenReady();

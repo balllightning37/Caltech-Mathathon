@@ -1,18 +1,7 @@
 /** Entry point for the "Understanding the problem" tab. */
 
 import { mountInstanceFigure, mountCoreFigure } from './figures/basics.js';
-
-function renderMath() {
-  if (typeof window.renderMathInElement !== 'function') return;
-  window.renderMathInElement(document.body, {
-    delimiters: [
-      { left: '\[', right: '\]', display: true },
-      { left: '\(', right: '\)', display: false },
-    ],
-    throwOnError: false,
-    ignoredClasses: ['mono'],
-  });
-}
+import { renderMathWhenReady } from './math-render.js';
 
 function mount(id, fn) {
   const host = document.getElementById(id);
@@ -30,5 +19,4 @@ function mount(id, fn) {
 mount('fig-1-host', (host) => mountInstanceFigure(host, { num: 1 }));
 mount('fig-2-host', (host) => mountCoreFigure(host, { num: 2 }));
 
-if (document.readyState === 'complete') renderMath();
-else window.addEventListener('load', renderMath);
+renderMathWhenReady();
