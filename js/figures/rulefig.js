@@ -22,7 +22,7 @@ export async function loadData() {
    Figure 8 — the swap argument
    ===================================================================== */
 
-export function mountSwapFigure(host, data) {
+export function mountSwapFigure(host, data, { num = 8 } = {}) {
   const { instance: I, swap } = data;
   let stage = 0;   // 0: W   1: W + c*   2: W + c* - d
 
@@ -184,7 +184,7 @@ export function mountSwapFigure(host, data) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-swap', num: 8, controls, body,
+    id: 'fig-swap', num, controls, body,
     caption: 'The swap argument on the committee that fails the core. If some loser holds a full quota in '
       + 'reserve, adding it gains at least q; some member can then be deleted for at most n/(k+1). Since '
       + 'q > n/(k+1), one single-candidate swap strictly improves V by at least ε — so no committee that is '
@@ -196,7 +196,7 @@ export function mountSwapFigure(host, data) {
    Figure 9 — the landscape: V against PAV over all committees
    ===================================================================== */
 
-export function mountLandscapeFigure(host, data) {
+export function mountLandscapeFigure(host, data, { num = 9 } = {}) {
   const { instance: I, landscape, maxV, maxPav } = data;
 
   // Group committees that share a (V, PAV, core) triple.
@@ -329,7 +329,7 @@ export function mountLandscapeFigure(host, data) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-landscape', num: 9, controls: [], body,
+    id: 'fig-landscape', num, controls: [], body,
     caption: 'All 45 committees of size k = 8 in this instance, scored by PAV and by harmonic entropy. '
       + 'Maximising V always lands in the core; maximising PAV need not. This is the computational shadow of '
       + 'Theorem 6.5 — and a reminder that the harmonic entropy rule is genuinely a different rule, not a '

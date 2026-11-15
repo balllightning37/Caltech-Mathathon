@@ -57,8 +57,7 @@ global.fetch = async () => ({ json: async () => landscape, ok: true });
 
 /* ---- mount every figure the way main.js does ---- */
 
-const { mountInstanceFigure, mountCoreFigure, mountCorePlusFigure } =
-  await import('../js/figures/basics.js');
+const { mountCorePlusFigure } = await import('../js/figures/basics.js');
 const { mountPaymentsFigure, mountPavFigure } =
   await import('../js/figures/paymentsfig.js');
 const { mountRobinHoodFigure, mountEntropyFigure } =
@@ -67,15 +66,13 @@ const { mountSwapFigure, mountLandscapeFigure } =
   await import('../js/figures/rulefig.js');
 
 const figures = [
-  ['fig-1-host', 'instance',   (h) => mountInstanceFigure(h)],
-  ['fig-2-host', 'core',       (h) => mountCoreFigure(h)],
-  ['fig-3-host', 'core+',      (h) => mountCorePlusFigure(h)],
-  ['fig-4-host', 'payments',   (h) => mountPaymentsFigure(h)],
-  ['fig-5-host', 'PAV',        (h) => mountPavFigure(h)],
-  ['fig-6-host', 'robin hood', (h) => mountRobinHoodFigure(h)],
-  ['fig-7-host', 'entropy',    (h) => mountEntropyFigure(h)],
-  ['fig-8-host', 'swap',       (h) => mountSwapFigure(h, landscape)],
-  ['fig-9-host', 'landscape',  (h) => mountLandscapeFigure(h, landscape)],
+  ['fig-1-host', 'core+',      (h) => mountCorePlusFigure(h, { num: 1 })],
+  ['fig-2-host', 'payments',   (h) => mountPaymentsFigure(h, { num: 2 })],
+  ['fig-3-host', 'PAV',        (h) => mountPavFigure(h, { num: 3 })],
+  ['fig-4-host', 'robin hood', (h) => mountRobinHoodFigure(h, { num: 4 })],
+  ['fig-5-host', 'entropy',    (h) => mountEntropyFigure(h, { num: 5 })],
+  ['fig-6-host', 'swap',       (h) => mountSwapFigure(h, landscape, { num: 6 })],
+  ['fig-7-host', 'landscape',  (h) => mountLandscapeFigure(h, landscape, { num: 7 })],
 ];
 
 let fails = 0;
@@ -140,7 +137,7 @@ for (const [id, name] of figures) {
 /* ---- clicking candidates / voters in the ballot diagrams ---- */
 
 console.log('\n--- exercising ballot clicks ---');
-for (const id of ['fig-1-host', 'fig-2-host']) {
+for (const id of ['fig-1-host']) {
   const host = document.getElementById(id);
   const groups = [...host.querySelectorAll('svg g')].filter((g) => g.getAttribute('style'));
   let f = 0;
@@ -163,8 +160,17 @@ chk('TOC links all resolve', [...document.querySelectorAll('.toc a')]
 chk('every content section heading is numbered',
   [...document.querySelectorAll('main section:not(.footnotes) h2')]
     .every((x) => x.querySelector('.num')));
-chk('all 10 sections present',
-  document.querySelectorAll('main section:not(.footnotes)').length === 10);
+chk('all 7 sections present',
+  document.querySelectorAll('main section:not(.footnotes)').length === 7);
+chk('figures are numbered 1..7 with no gaps', (() => {
+  const nums = [...document.querySelectorAll('figcaption .fignum')]
+    .map((x) => parseInt(x.textContent.replace(/\D/g, ''), 10));
+  return nums.join() === '1,2,3,4,5,6,7';
+})(), [...document.querySelectorAll('figcaption .fignum')].map((x) => x.textContent).join(' '));
+chk('tab bar has all three tabs',
+  document.querySelectorAll('.tabs a').length === 3);
+chk('this tab is marked current',
+  document.querySelector('.tabs a[aria-current="page"]').getAttribute('href') === 'index.html');
 chk('paper is cited', bodyText.includes('2609.11912'));
 
 console.log(fails === 0 ? '\nALL TESTS PASSED' : `\n${fails} FAILURE(S)`);

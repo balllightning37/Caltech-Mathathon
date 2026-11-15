@@ -37,7 +37,7 @@ function paperCertificate(inst) {
    Figure 4 — the payment-system playground
    ===================================================================== */
 
-export function mountPaymentsFigure(host) {
+export function mountPaymentsFigure(host, { num = 4 } = {}) {
   const inst = figure2Instance();
   let committee = 'W';
   let ps = uniformPaymentSystem(inst, FIG2_W);
@@ -255,7 +255,7 @@ export function mountPaymentsFigure(host) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-payments', num: 4, controls, body,
+    id: 'fig-payments', num, controls, body,
     caption: 'A payment system is a certificate. Conditions (P1)–(P4) are checkable by inspection, and by '
       + 'Theorem 3.2 a committee satisfies core+ exactly when some payment system satisfies all four. '
       + 'For W no such system exists; for W′ the paper exhibits one.',
@@ -266,7 +266,7 @@ export function mountPaymentsFigure(host) {
    Figure 5 — PAV: harmonic marginal gains, and the swap argument
    ===================================================================== */
 
-export function mountPavFigure(host) {
+export function mountPavFigure(host, { num = 5 } = {}) {
   const inst = figure2Instance();
   let W = new Set(FIG2_W);
   let added = null;
@@ -376,7 +376,7 @@ export function mountPavFigure(host) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-pav', num: 5, controls, body,
+    id: 'fig-pav', num, controls, body,
     caption: 'PAV reads as a payment rule. A voter with u approved winners splits her budget into u + 1 equal '
       + 'parts, so her reserve is 1/(u+1) — exactly the PAV gain from one more approved winner. That identity '
       + 'drives the swap argument that gives (P3) for free. But on W the shared candidates c1 and c2 each collect '

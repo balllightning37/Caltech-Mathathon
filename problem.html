@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Understanding the Problem — an interactive explainer</title>
+<meta name="description" content="What the core of an approval-based committee election is, why it is the right notion of stability, and how a reasonable-looking committee fails it.">
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" integrity="sha512-fHwaWebuwA7NSF5Qg/af4UeDx9XqUpYpOGgubo3yWu+b2IQR4UeQwbb42Ti7gVAjNtVoI/I9TEoYeu9omwcC6g==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" integrity="sha512-LQNxIMR5rXv7o+b1l8+N1EZMfhG7iFZ9HhnbJkTp4zjNr5Wvst75AqUeFDxeRUa7l5vEDyUiAip//r+EFLLCyA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" integrity="sha512-iWiuBS5nt6r60fCz26Nd0Zqe0nbk1ZTIQbl3Kv7kYsX+yKMUFHzjaH2+AnM6vp2Xs+gNmaBAVWJjSmuPw76Efg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<header class="wrap masthead">
+  <p class="eyebrow">Interactive explainer · Caltech Mathathon</p>
+  <h1>Understanding the problem</h1>
+  <p class="byline">
+    Sections 2–3 of
+    <em>Existence of the Core in Approval-Based Committee Elections</em>,
+    by Patrick Becker, Matthias Greger and Dominik Peters
+    (<a href="https://arxiv.org/abs/2609.11912">arXiv:2609.11912v2</a>).
+  </p>
+  <p class="masthead-note">
+    What are we even asking for? This tab sets up approval-based committee elections, defines the
+    core, and shows a committee that looks perfectly sensible and still fails it. Every diagram is
+    live, and every number in it is computed in your browser from the definitions in the paper.
+  </p>
+
+  <nav class="tabs">
+    <a href="problem.html" aria-current="page">Understanding the problem</a>
+    <a href="index.html">Why the core exists</a>
+    <a href="algorithm.html">Computing one</a>
+  </nav>
+
+  <nav class="toc">
+    <ol>
+      <li><a href="#s-question">The question that was open</a></li>
+      <li><a href="#s-setup">Elections, committees, quotas</a></li>
+      <li><a href="#s-core">The core, and how it fails</a></li>
+      <li><a href="#s-next">Where this goes next</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<section id="s-question">
+  <h2><span class="num">1</span>The question that was open</h2>
+
+  <p>
+    A city has to pick 8 projects from a list of 10. Every resident marks the ones they like. Which 8
+    should win? Picking the most popular ones can leave a sizeable minority with nothing. What we want
+    is a committee that is <em>stable</em>: no group of voters, large enough to deserve a share of the
+    budget, can point to a different slate of proportional size that every one of them likes strictly
+    better.
+  </p>
+
+  <p>
+    That stability notion is the <strong>core</strong>, introduced for this setting by Aziz, Brill and
+    co-authors in 2017. The obvious question — does a committee in the core always exist? — stayed open
+    for years. Algorithms were known that got within a constant factor, or that worked in special
+    cases, but nobody could rule out an election in which every single committee is blocked by some
+    coalition.
+  </p>
+
+  <div class="summary">
+    <span class="tag">The result</span>
+    <p>
+      The core is always non-empty. Moreover a committee in the core can be computed in polynomial
+      time, and it satisfies a strictly stronger property the authors call <strong>core+</strong>.
+    </p>
+  </div>
+
+  <p>
+    The proof is not a direct construction, and it is not a fixed-point argument. It works by inventing
+    a quantity to maximise. The route has four moves, which the
+    <a href="index.html">next tab</a> walks through in turn:
+  </p>
+
+  <ol class="body-list">
+    <li><strong>Strengthen</strong> the core to core+, by letting coalitions deviate fractionally. A
+      stronger property is harder to satisfy, but it has far better structure.</li>
+    <li><strong>Dualise.</strong> By LP duality, core+ is equivalent to the existence of a
+      <em>payment system</em> — a certificate you can check by inspection.</li>
+    <li><strong>Score.</strong> Invent an objective, <em>harmonic entropy</em>, that rewards balanced
+      payments and whose marginal gains line up exactly with a voter's unspent budget.</li>
+    <li><strong>Optimise.</strong> Show that any committee maximising that objective — even only
+      locally — must admit a valid certificate. Existence follows, because a maximum exists.</li>
+  </ol>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-setup">
+  <h2><span class="num">2</span>Elections, committees, quotas</h2>
+
+  <p>
+    There are \(n\) voters \(N = [n]\) and \(m\) candidates \(C = \{c_1,\dots,c_m\}\), and we must elect
+    a committee of \(k\) of them. Voter \(i\) submits a set \(A_i \subseteq C\) of approved candidates,
+    and her utility for a committee \(W\) is simply how many of her approvals got in:
+  </p>
+
+  <p>\[ u_i(W) \;=\; |A_i \cap W|. \]</p>
+
+  <p>
+    We write \(N_c = \{i \in N : c \in A_i\}\) for the supporters of candidate \(c\). One more quantity
+    does a lot of work: the <strong>quota</strong> \(q\), the number of voters needed to deserve one
+    candidate. The <em>Hare</em> quota is \(n/k\) and the <em>Droop</em> quota is \(n/(k+1)\); throughout,
+    the paper assumes
+  </p>
+
+  <p>\[ \frac{n}{k+1} \;<\; q \;\le\; \frac{n}{k}. \]</p>
+
+  <p>
+    That strict left-hand inequality looks like bookkeeping. It is not — the gap
+    \(\varepsilon = q - n/(k+1) > 0\) is exactly the slack that the final argument spends, and the whole
+    proof turns on its being positive.
+  </p>
+
+  <div id="fig-1-host"></div>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-core">
+  <h2><span class="num">3</span>The core, and how it fails</h2>
+
+  <p>
+    A non-empty coalition \(S \subseteq N\) <strong>blocks</strong> a committee \(W\) if it can afford
+    some proposal \(T \subseteq C\) — meaning \(|S| \ge q\,|T|\), the coalition is large enough to pay
+    for \(|T|\) candidates at \(q\) voters each — and every member strictly prefers it:
+  </p>
+
+  <p>\[ u_i(T) \;\ge\; u_i(W) + 1 \quad\text{for every } i \in S. \tag{1} \]</p>
+
+  <p>
+    \(W\) is in the <strong>core</strong> if no coalition blocks it. The definition is demanding in a
+    subtle way: the coalition gets to choose both who joins and what to propose, and those choices
+    interact. Deciding whether a <em>given</em> committee is in the core is already
+    coNP-complete, which is a fair warning about the structure one is dealing with.
+  </p>
+
+  <p>
+    The figure below is the paper's Figure 2, and it is the example to keep in mind for the rest of this
+    page. Voters <code>v1</code> and <code>v2</code> both approve <code>c1</code> and <code>c2</code>,
+    and each has one private candidate; <code>v3</code> and <code>v4</code> jointly approve a block of
+    six. With \(k=8\) and the Hare quota \(q = 4/8 = 1/2\), the committee
+    \(W = \{c_1,c_2,c_5,\dots,c_{10}\}\) looks reasonable and in fact maximises PAV — yet
+    \(\{v_1,v_2\}\) can afford \(\{c_1,c_2,c_3,c_4\}\), since \(|S| = 2 = q\cdot 4\), and both of them
+    go from utility 2 to utility 3.
+  </p>
+
+  <div id="fig-2-host"></div>
+</section>
+
+<!-- ================================================================= -->
+<section id="s-next">
+  <h2><span class="num">4</span>Where this goes next</h2>
+
+  <p>
+    So the core asks for a lot, and the committee above shows that the obvious proportional rule does
+    not deliver it. Two questions remain, one per tab:
+  </p>
+
+  <ul class="body-list">
+    <li><a href="index.html"><strong>Why the core exists.</strong></a> Does a committee in the core
+      always exist? The answer is yes, and the proof is indirect: strengthen the core to
+      <em>core+</em>, dualise it into a payment certificate, and invent an objective whose
+      maximisers must admit one.</li>
+    <li><a href="algorithm.html"><strong>Computing one.</strong></a> Can we actually find such a
+      committee? Yes, in polynomial time — and you can watch the algorithm run, step by step, on an
+      instance you build yourself.</li>
+  </ul>
+</section>
+
+<section class="footnotes">
+  <h2>Notes on this page</h2>
+  <ol>
+    <li>
+      All quantities are computed live from the definitions, in
+      <code>js/math-core.js</code>, <code>election.js</code> and <code>payments.js</code>. The
+      implementation is checked against the paper's own worked examples; run <code>npm test</code>
+      to re-verify.
+    </li>
+    <li>
+      The exhaustive core check enumerates every one of the \(2^m-1\) possible proposals and, for
+      each, the coalition of all voters who would strictly gain from it. That is exponential in the
+      number of candidates, which is fine at the sizes used here.
+    </li>
+    <li>
+      Equation and theorem numbers follow arXiv:2609.11912v2.
+    </li>
+    <li>
+      Layout and typography follow the editorial style of
+      <a href="https://www.sophielwang.com/cues">sophielwang.com/cues</a>.
+    </li>
+  </ol>
+</section>
+
+</main>
+
+<script type="module" src="js/problem-main.js"></script>
+</body>
+</html>

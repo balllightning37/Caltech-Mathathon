@@ -9,7 +9,7 @@ import { H, waterLevel, robinHood, harmonicEntropy, harmonicEntropySeries, isUni
    Figure 6 — the Robin Hood operator
    ===================================================================== */
 
-export function mountRobinHoodFigure(host) {
+export function mountRobinHoodFigure(host, { num = 6 } = {}) {
   const START = [1 / 2, 1 / 3, 1 / 6];
   let x = START.slice();
   let history = [START.slice()];
@@ -203,7 +203,7 @@ export function mountRobinHoodFigure(host) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-robinhood', num: 6, controls, body,
+    id: 'fig-robinhood', num, controls, body,
     caption: 'The Robin Hood operator, reproducing the paper’s Figure 3. Starting from (1/2, 1/3, 1/6) the '
       + 'water levels are 5/18, 5/24 and 1/6, after which the distribution is uniform on six coordinates. '
       + 'No existing coordinate ever rises, and the total mass never changes.',
@@ -216,7 +216,7 @@ export function mountRobinHoodFigure(host) {
 
 const RAMP = ['#e6f5f3', '#c3e9e4', '#9bdbd3', '#6fcac0', '#45b3a7', '#2b968b', '#1b776e', '#0f5751'];
 
-export function mountEntropyFigure(host) {
+export function mountEntropyFigure(host, { num = 7 } = {}) {
   // A point on the 2-simplex, draggable in the triangle.
   let pt = [1 / 2, 1 / 3, 1 / 6];
 
@@ -358,7 +358,7 @@ export function mountEntropyFigure(host) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-entropy', num: 7, controls, body,
+    id: 'fig-entropy', num, controls, body,
     caption: 'Harmonic entropy. Left: level sets of F on the three-coordinate simplex, the paper’s Figure 4; '
       + 'the maximum 3/2 = H_2 sits at the barycentre and F vanishes at the corners. Right: the defining '
       + 'recursion unrolled at the chosen point, ending in the harmonic number of a uniform distribution.',

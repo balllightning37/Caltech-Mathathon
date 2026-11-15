@@ -17,27 +17,26 @@
   <p class="eyebrow">Interactive explainer · Caltech Mathathon</p>
   <h1>The core of an approval-based committee election is never empty</h1>
   <p class="byline">
-    A walkthrough of Sections 2–6 of
+    A walkthrough of Sections 3–6 of
     <em>Existence of the Core in Approval-Based Committee Elections</em>,
     by Patrick Becker, Matthias Greger and Dominik Peters
     (<a href="https://arxiv.org/abs/2609.11912">arXiv:2609.11912v2</a>).
   </p>
   <p class="masthead-note">
-    Every diagram on this page is live, and every number in it is computed in your browser from the
-    definitions in the paper — nothing is hard-coded. The goal is to make one proof legible: why a
-    committee that no coalition wants to abandon must always exist.
+    This tab is the proof itself. If the core and the quota are new to you, start with
+    <a href="problem.html">Understanding the problem</a>. Every diagram here is live, and every
+    number in it is computed in your browser from the definitions in the paper — nothing is
+    hard-coded.
   </p>
 
   <nav class="tabs">
+    <a href="problem.html">Understanding the problem</a>
     <a href="index.html" aria-current="page">Why the core exists</a>
     <a href="algorithm.html">Computing one</a>
   </nav>
 
   <nav class="toc">
     <ol>
-      <li><a href="#s-question">The question that was open</a></li>
-      <li><a href="#s-setup">Elections, committees, quotas</a></li>
-      <li><a href="#s-core">The core, and how it fails</a></li>
       <li><a href="#s-coreplus">Core+: deviating by fractions</a></li>
       <li><a href="#s-payments">Payment systems as certificates</a></li>
       <li><a href="#s-pav">What PAV gets right, and wrong</a></li>
@@ -52,115 +51,17 @@
 <main class="wrap">
 
 <!-- ================================================================= -->
-<section id="s-question">
-  <h2><span class="num">1</span>The question that was open</h2>
-
-  <p>
-    A city has to pick 8 projects from a list of 10. Every resident marks the ones they like. Which 8
-    should win? Picking the most popular ones can leave a sizeable minority with nothing. What we want
-    is a committee that is <em>stable</em>: no group of voters, large enough to deserve a share of the
-    budget, can point to a different slate of proportional size that every one of them likes strictly
-    better.
-  </p>
-
-  <p>
-    That stability notion is the <strong>core</strong>, introduced for this setting by Aziz, Brill and
-    co-authors in 2017. The obvious question — does a committee in the core always exist? — stayed open
-    for years. Algorithms were known that got within a constant factor, or that worked in special
-    cases, but nobody could rule out an election in which every single committee is blocked by some
-    coalition.
-  </p>
-
-  <div class="summary">
-    <span class="tag">The result</span>
-    <p>
-      The core is always non-empty. Moreover a committee in the core can be computed in polynomial
-      time, and it satisfies a strictly stronger property the authors call <strong>core+</strong>.
-    </p>
-  </div>
-
-  <p>
-    The proof is not a direct construction, and it is not a fixed-point argument. It works by inventing
-    a quantity to maximise. The route has four moves, and this page walks through each in turn:
-  </p>
-
-  <ol class="body-list">
-    <li><strong>Strengthen</strong> the core to core+, by letting coalitions deviate fractionally. A
-      stronger property is harder to satisfy, but it has far better structure.</li>
-    <li><strong>Dualise.</strong> By LP duality, core+ is equivalent to the existence of a
-      <em>payment system</em> — a certificate you can check by inspection.</li>
-    <li><strong>Score.</strong> Invent an objective, <em>harmonic entropy</em>, that rewards balanced
-      payments and whose marginal gains line up exactly with a voter's unspent budget.</li>
-    <li><strong>Optimise.</strong> Show that any committee maximising that objective — even only
-      locally — must admit a valid certificate. Existence follows, because a maximum exists.</li>
-  </ol>
-</section>
-
-<!-- ================================================================= -->
-<section id="s-setup">
-  <h2><span class="num">2</span>Elections, committees, quotas</h2>
-
-  <p>
-    There are \(n\) voters \(N = [n]\) and \(m\) candidates \(C = \{c_1,\dots,c_m\}\), and we must elect
-    a committee of \(k\) of them. Voter \(i\) submits a set \(A_i \subseteq C\) of approved candidates,
-    and her utility for a committee \(W\) is simply how many of her approvals got in:
-  </p>
-
-  <p>\[ u_i(W) \;=\; |A_i \cap W|. \]</p>
-
-  <p>
-    We write \(N_c = \{i \in N : c \in A_i\}\) for the supporters of candidate \(c\). One more quantity
-    does a lot of work: the <strong>quota</strong> \(q\), the number of voters needed to deserve one
-    candidate. The <em>Hare</em> quota is \(n/k\) and the <em>Droop</em> quota is \(n/(k+1)\); throughout,
-    the paper assumes
-  </p>
-
-  <p>\[ \frac{n}{k+1} \;<\; q \;\le\; \frac{n}{k}. \]</p>
-
-  <p>
-    That strict left-hand inequality looks like bookkeeping. It is not — the gap
-    \(\varepsilon = q - n/(k+1) > 0\) is exactly the slack that the final argument spends, and the whole
-    proof turns on its being positive.
-  </p>
-
-  <div id="fig-1-host"></div>
-</section>
-
-<!-- ================================================================= -->
-<section id="s-core">
-  <h2><span class="num">3</span>The core, and how it fails</h2>
-
-  <p>
-    A non-empty coalition \(S \subseteq N\) <strong>blocks</strong> a committee \(W\) if it can afford
-    some proposal \(T \subseteq C\) — meaning \(|S| \ge q\,|T|\), the coalition is large enough to pay
-    for \(|T|\) candidates at \(q\) voters each — and every member strictly prefers it:
-  </p>
-
-  <p>\[ u_i(T) \;\ge\; u_i(W) + 1 \quad\text{for every } i \in S. \tag{1} \]</p>
-
-  <p>
-    \(W\) is in the <strong>core</strong> if no coalition blocks it. The definition is demanding in a
-    subtle way: the coalition gets to choose both who joins and what to propose, and those choices
-    interact. Deciding whether a <em>given</em> committee is in the core is already
-    coNP-complete, which is a fair warning about the structure one is dealing with.
-  </p>
-
-  <p>
-    The figure below is the paper's Figure 2, and it is the example to keep in mind for the rest of this
-    page. Voters <code>v1</code> and <code>v2</code> both approve <code>c1</code> and <code>c2</code>,
-    and each has one private candidate; <code>v3</code> and <code>v4</code> jointly approve a block of
-    six. With \(k=8\) and the Hare quota \(q = 4/8 = 1/2\), the committee
-    \(W = \{c_1,c_2,c_5,\dots,c_{10}\}\) looks reasonable and in fact maximises PAV — yet
-    \(\{v_1,v_2\}\) can afford \(\{c_1,c_2,c_3,c_4\}\), since \(|S| = 2 = q\cdot 4\), and both of them
-    go from utility 2 to utility 3.
-  </p>
-
-  <div id="fig-2-host"></div>
-</section>
-
-<!-- ================================================================= -->
 <section id="s-coreplus">
-  <h2><span class="num">4</span>Core+: deviating by fractions</h2>
+  <h2><span class="num">1</span>Core+: deviating by fractions</h2>
+
+  <p>
+    Briefly, from <a href="problem.html">the previous tab</a>: a coalition \(S\) <strong>blocks</strong>
+    a committee \(W\) when it can afford some proposal \(T\) — meaning \(|S| \ge q\,|T|\) for the
+    quota \(q\) — and every member of \(S\) strictly prefers \(T\) to \(W\). A committee is in the
+    <strong>core</strong> when no coalition blocks it. That is demanding: the committee maximising PAV
+    in the paper's Figure 2 instance is blocked, and verifying membership is coNP-complete. The
+    question is whether a committee in the core must exist at all.
+  </p>
 
   <p>
     Here is the first real move. Instead of weakening the requirement to make it easier to satisfy, the
@@ -198,12 +99,12 @@
     is now described by linear inequalities, which is what makes duality available.
   </p>
 
-  <div id="fig-3-host"></div>
+  <div id="fig-1-host"></div>
 </section>
 
 <!-- ================================================================= -->
 <section id="s-payments">
-  <h2><span class="num">5</span>Payment systems as certificates</h2>
+  <h2><span class="num">2</span>Payment systems as certificates</h2>
 
   <p>
     Testing core+ directly means checking that a linear program is <em>infeasible</em>. Dualise it, and
@@ -273,7 +174,7 @@
     <code>W&prime;</code> it can be done.
   </p>
 
-  <div id="fig-4-host"></div>
+  <div id="fig-2-host"></div>
 
   <p>
     Conditions (P1)–(P3) alone already buy a lot: any committee admitting such a system satisfies EJR+,
@@ -284,7 +185,7 @@
 
 <!-- ================================================================= -->
 <section id="s-pav">
-  <h2><span class="num">6</span>What PAV gets right, and wrong</h2>
+  <h2><span class="num">3</span>What PAV gets right, and wrong</h2>
 
   <p>
     <strong>Proportional approval voting</strong> picks the committee maximising
@@ -338,10 +239,11 @@
     But PAV stops there, and the figure shows why. On \(W\), voters \(v_1\) and \(v_2\) each pay
     \(1/3\) to both \(c_1\) and \(c_2\), so each of those candidates collects \(2/3 > q = 1/2\).
     Condition (P4) fails: PAV <em>overcharges</em> \(v_1\) and \(v_2\). And indeed \(W\) is exactly the
-    committee that the coalition \(\{v_1, v_2\}\) blocked back in Section 3.
+    committee that the coalition \(\{v_1, v_2\}\) blocked on the
+    <a href="problem.html#s-core">previous tab</a>.
   </p>
 
-  <div id="fig-5-host"></div>
+  <div id="fig-3-host"></div>
 
   <p>
     Forcing (P4) to hold here would push \(r_1\) or \(r_2\) up to \(q\), breaking (P3) for \(c_3\) or
@@ -354,7 +256,7 @@
 
 <!-- ================================================================= -->
 <section id="s-robinhood">
-  <h2><span class="num">7</span>The Robin Hood operator</h2>
+  <h2><span class="num">4</span>The Robin Hood operator</h2>
 
   <p>
     By (P1) and (P2), a voter's reserve and payments form a probability distribution in which the
@@ -400,12 +302,12 @@
 
   <p>\[ t_\ell(x) \;=\; \max_{\emptyset \neq S \subseteq [d]} \frac{\sum_{j \in S} x_j}{|S| + \ell}. \tag{4} \]</p>
 
-  <div id="fig-6-host"></div>
+  <div id="fig-4-host"></div>
 </section>
 
 <!-- ================================================================= -->
 <section id="s-entropy">
-  <h2><span class="num">8</span>Harmonic entropy</h2>
+  <h2><span class="num">5</span>Harmonic entropy</h2>
 
   <p>
     Now define, for strictly positive \(x \in \Delta_d\),
@@ -452,12 +354,12 @@
     exact reciprocals, which is precisely what PAV needs.
   </blockquote>
 
-  <div id="fig-7-host"></div>
+  <div id="fig-5-host"></div>
 </section>
 
 <!-- ================================================================= -->
 <section id="s-rule">
-  <h2><span class="num">9</span>The harmonic entropy rule</h2>
+  <h2><span class="num">6</span>The harmonic entropy rule</h2>
 
   <p>
     Everything is now in place. For a committee \(W\), optimise jointly over all payment systems that
@@ -553,7 +455,7 @@
     local optimum. Walk the numbers below on the very committee that failed the core in Section 3.
   </p>
 
-  <div id="fig-8-host"></div>
+  <div id="fig-6-host"></div>
 
   <p>
     Because only <em>local</em> optimality is needed, this also yields the polynomial-time algorithm of
@@ -566,12 +468,12 @@
     \(V\) lands in the core every time; maximising PAV does not.
   </p>
 
-  <div id="fig-9-host"></div>
+  <div id="fig-7-host"></div>
 </section>
 
 <!-- ================================================================= -->
 <section id="s-chain">
-  <h2><span class="num">10</span>Why this proves existence</h2>
+  <h2><span class="num">7</span>Why this proves existence</h2>
 
   <p>
     Read the chain backwards and the existence proof is three lines.
@@ -620,7 +522,7 @@
     <li>
       \(V(W)\) is a concave maximisation over a polytope. It is solved here by projected gradient ascent,
       with the projection onto (P1), (P2) and (P4) computed by Dykstra's alternating-projection
-      algorithm. Values are therefore numerical, not exact; Figures 8 and 9 read from
+      algorithm. Values are therefore numerical, not exact; Figures 6 and 7 read from
       <code>data/landscape.json</code>, precomputed by <code>tools/precompute.mjs</code> using the
       same code this page ships.
     </li>

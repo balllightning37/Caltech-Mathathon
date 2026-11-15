@@ -6,11 +6,12 @@ by Patrick Becker, Matthias Greger and Dominik Peters
 
 **Live site:** https://balllightning37.github.io/Caltech-Mathathon/
 
-Two tabs:
+Three tabs:
 
 | Tab | Page | Covers |
 | --- | --- | --- |
-| Why the core exists | [`index.html`](index.html) | Sections 2-6: the existence proof |
+| Understanding the problem | [`problem.html`](problem.html) | Sections 2-3: the setup, the quota, and how a sensible committee fails the core |
+| Why the core exists | [`index.html`](index.html) | Sections 3-6: the existence proof |
 | Computing one | [`algorithm.html`](algorithm.html) | The algorithm, a faster variant, and a runner you can drive |
 
 The second tab ends with a **fully interactive runner**: set the number of voters, candidates and
@@ -21,21 +22,28 @@ payment system being assembled — which is what certifies the final committee a
 ## What this covers
 
 Sections 2–6 of the paper: the proof that **core+ is always satisfiable**, and hence that the core
-of an approval-based committee election is never empty. The page follows the argument in ten steps,
-each with a live diagram:
+of an approval-based committee election is never empty. Each step has a live diagram.
+
+*Understanding the problem* ([`problem.html`](problem.html)):
 
 | § | Topic | Paper |
 | --- | --- | --- |
 | 1 | The question that was open | §1 |
 | 2 | Elections, committees, quotas | §2 |
 | 3 | The core, and how it fails | §3 |
-| 4 | Core+: deviating by fractions | §3, Def. 3.1 |
-| 5 | Payment systems as certificates | §3, (P1)–(P4), Thm 3.2 |
-| 6 | What PAV gets right, and wrong | §4, Thm 4.1 |
-| 7 | The Robin Hood operator | §5.1, Lem. 5.1 |
-| 8 | Harmonic entropy | §5.2, Prop. 5.2 |
-| 9 | The harmonic entropy rule | §6, Thms 6.2, 6.3, 6.5 |
-| 10 | Why this proves existence | — |
+| 4 | Where this goes next | — |
+
+*Why the core exists* ([`index.html`](index.html)):
+
+| § | Topic | Paper |
+| --- | --- | --- |
+| 1 | Core+: deviating by fractions | §3, Def. 3.1 |
+| 2 | Payment systems as certificates | §3, (P1)–(P4), Thm 3.2 |
+| 3 | What PAV gets right, and wrong | §4, Thm 4.1 |
+| 4 | The Robin Hood operator | §5.1, Lem. 5.1 |
+| 5 | Harmonic entropy | §5.2, Prop. 5.2 |
+| 6 | The harmonic entropy rule | §6, Thms 6.2, 6.3, 6.5 |
+| 7 | Why this proves existence | — |
 
 Sections 7–9 (polynomial-time computation, the Droop extension, discussion) and the appendices are
 only summarised in passing.
@@ -88,8 +96,9 @@ npm run bench:py       # measures the speedup
 GitHub Pages serves the repository root, so the site lives there directly.
 
 ```
-index.html                  the existence explainer (tab 1)
-algorithm.html              the algorithm explainer (tab 2)
+problem.html                the setup and the core (tab 1)
+index.html                  the existence proof (tab 2)
+algorithm.html              the algorithm (tab 3)
 .nojekyll                   serve files verbatim, without Jekyll
 css/style.css               design tokens and layout
 data/landscape.json         precomputed V(W) for all 45 committees
@@ -102,7 +111,7 @@ js/
   ballot.js                 shared approval-profile renderer
   ui.js                     SVG/DOM helpers, controls, figure scaffold
   figures/                  one module per group of figures
-  main.js, algo-main.js     entry point per tab
+  problem-main.js, main.js, algo-main.js   entry point per tab
 core_algorithm.py           exact rational reference implementation (z3)
 core-algorithm-explained.md its prose companion
 tests/                      math, election, algorithm and render tests

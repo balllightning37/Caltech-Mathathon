@@ -10,7 +10,7 @@ import { figure2Instance, makeInstance, utilities, findCoreViolation, blocks, ut
    Figure 1 — the instance: ballots, committee, quota, utilities
    ===================================================================== */
 
-export function mountInstanceFigure(host) {
+export function mountInstanceFigure(host, { num = 1 } = {}) {
   const base = figure2Instance();
   let W = new Set([0, 1, 4, 5, 6, 7, 8, 9]);
   let quotaKind = 'hare';
@@ -82,7 +82,7 @@ export function mountInstanceFigure(host) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-instance', num: 1, controls, body,
+    id: 'fig-instance', num, controls, body,
     caption: 'An approval-based committee election. This is the instance of the paper’s Figure 2: '
       + 'v1 and v2 share c1 and c2 and each have one private candidate, while v3 and v4 jointly approve the block c5–c10. '
       + 'With k = 8 and the Hare quota, q = 4/8 = 1/2.',
@@ -93,7 +93,7 @@ export function mountInstanceFigure(host) {
    Figure 2 — the core: build a blocking coalition by hand
    ===================================================================== */
 
-export function mountCoreFigure(host) {
+export function mountCoreFigure(host, { num = 2 } = {}) {
   const inst = figure2Instance();
   const W = new Set([0, 1, 4, 5, 6, 7, 8, 9]);
   let S = new Set();
@@ -176,7 +176,7 @@ export function mountCoreFigure(host) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-core', num: 2, controls, body,
+    id: 'fig-core', num, controls, body,
     caption: 'The core, by hand. The committee W = {c1, c2, c5…c10} maximises PAV, yet the two-voter '
       + 'coalition {v1, v2} can afford the four-candidate proposal {c1, c2, c3, c4} — since |S| = 2 = q·|T| — '
       + 'and both members go from utility 2 to utility 3. So W is not in the core.',
@@ -187,7 +187,7 @@ export function mountCoreFigure(host) {
    Figure 3 — core+: fractional deviations
    ===================================================================== */
 
-export function mountCorePlusFigure(host) {
+export function mountCorePlusFigure(host, { num = 3 } = {}) {
   const inst = figure2Instance();
   const W = new Set([0, 1, 4, 5, 6, 7, 8, 9]);
   // The interesting sub-instance: v1, v2 and candidates c1..c4.
@@ -311,7 +311,7 @@ export function mountCorePlusFigure(host) {
 
   render();
   host.appendChild(figure({
-    id: 'fig-coreplus', num: 3, controls, body,
+    id: 'fig-coreplus', num, controls, body,
     caption: 'Core+ allows fractional deviations. Voter i joins with weight y_i and the coalition buys '
       + 'quantity z_c of candidate c. A voter who joins only partly still draws utility from the winners '
       + 'she keeps, which is why the winners she approves contribute min(y_i, z_c) rather than z_c.',
