@@ -220,5 +220,114 @@ console.log('--- runner: size controls ---');
   chk('runner: shrinking n, m, k never throws', threw === 0);
 }
 
+
+/* ---- the two fixes: profile highlighting, and label collision ---- */
+
+console.log('\n--- runner: committee highlighted on the approval profile ---');
+{
+  const host = document.getElementById('fig-a4-host');
+  const byText = (t) => [...host.querySelectorAll('button')].find((b) => b.textContent === t);
+  const reset = byText('Reset');
+  if (reset) reset.click();
+  const preset = byText('two blocks');
+  if (preset) preset.click();
+
+  // Walk every step and check the profile is drawn and tinted sensibly.
+  let seenCommitteeFill = false, seenViolet = false, seenBrick = false, seenAmber = false;
+  let stepsWithProfile = 0, stepsTotal = 0;
+  let guard = 0;
+  while (guard++ < 300) {
+    stepsTotal++;
+    const heads = [...host.querySelectorAll('.panel-head')].map((x) => x.textContent);
+    const hasProfile = heads.some((t) => t.startsWith('the approval profile'));
+    if (hasProfile) stepsWithProfile++;
+    const fills = [...host.querySelectorAll('svg rect')].map((r) => r.getAttribute('fill') || '');
+    if (fills.some((f) => f.includes('teal-soft'))) seenCommitteeFill = true;
+    if (fills.some((f) => f.includes('violet-soft'))) seenViolet = true;
+    if (fills.some((f) => f.includes('brick-soft'))) seenBrick = true;
+    if (fills.some((f) => f.includes('amber-soft'))) seenAmber = true;
+    const step = byText('Step');
+    if (!step) break;
+    if (host.textContent.includes('from certificate back to the core')) break;
+    step.click();
+  }
+  chk('runner: every step draws the approval profile',
+    stepsWithProfile === stepsTotal, `${stepsWithProfile}/${stepsTotal}`);
+  chk('runner: committee members tinted on the profile', seenCommitteeFill);
+  chk('runner: the added / violating candidate is tinted', seenViolet);
+  chk('runner: the candidate being deleted is tinted', seenBrick);
+  chk('runner: preprocessing marks high-degree candidates', seenAmber);
+  chk('runner: profile legend explains the tints',
+    host.textContent.includes('in the committee'));
+}
+
+console.log('--- scan charts: the q label never collides with the title ---');
+{
+  // Both the runner's scan view and Figure 1's share the same layout rule:
+  // the title occupies the first text band and the quota label its own,
+  // lower one. Check no two <text> nodes in those charts share a baseline
+  // while overlapping horizontally.
+  const approxWidth = (t, size) => t.length * size * 0.55;
+
+  const checkChart = (svg, label) => {
+    const texts = [...svg.querySelectorAll('text')];
+    const title = texts.find((t) => /reserve held behind each loser/.test(t.textContent));
+    const qlab = texts.find((t) => /^q = /.test(t.textContent));
+    if (!title || !qlab) return null;
+    const ty = parseFloat(title.getAttribute('y'));
+    const qy = parseFloat(qlab.getAttribute('y'));
+    if (ty !== qy) return { ok: true, why: `different baselines (${ty} vs ${qy})` };
+    // Same baseline: they must not overlap horizontally.
+    const tw = approxWidth(title.textContent, 11);
+    const anchor = qlab.getAttribute('text-anchor');
+    const qx = parseFloat(qlab.getAttribute('x'));
+    const qw = approxWidth(qlab.textContent, 9.5);
+    const qLeft = anchor === 'middle' ? qx - qw / 2 : anchor === 'end' ? qx - qw : qx;
+    return { ok: qLeft > tw, why: `same baseline ${ty}; title ends ~${tw.toFixed(0)}, q starts ~${qLeft.toFixed(0)}` };
+  };
+
+  // Runner: drive it to a step that shows the scan, on an instance whose
+  // quota line lands far left (a loser holding well over the quota).
+  const host = document.getElementById('fig-a4-host');
+  const byText = (t) => [...host.querySelectorAll('button')].find((b) => b.textContent === t);
+  const reset = byText('Reset');
+  if (reset) reset.click();
+  const fig2 = byText("paper's Figure 2");
+  if (fig2) fig2.click();
+  let guard = 0, checked = 0, bad = 0, notes = [];
+  while (guard++ < 300) {
+    for (const svg of host.querySelectorAll('svg')) {
+      const r = checkChart(svg, 'runner');
+      if (r) { checked++; if (!r.ok) { bad++; notes.push(`runner: ${r.why}`); } }
+    }
+    const step = byText('Step');
+    if (!step) break;
+    if (host.textContent.includes('from certificate back to the core')) break;
+    step.click();
+  }
+  chk(`runner: q label clear of the title on ${checked} scan charts`, bad === 0,
+    notes.slice(0, 2).join(' | '));
+
+  // Figure 1, across every preset.
+  const f1 = document.getElementById('fig-a1-host');
+  let c1 = 0, b1 = 0; const n1 = [];
+  for (const presetLabel of ['Figure 2', 'Two blocks', 'Three blocks', 'Overlapping', 'Low degree']) {
+    const b = [...f1.querySelectorAll('button')].find((x) => x.textContent === presetLabel);
+    if (b) b.click();
+    let g2 = 0;
+    while (g2++ < 30) {
+      for (const svg of f1.querySelectorAll('svg')) {
+        const r = checkChart(svg, 'fig1');
+        if (r) { c1++; if (!r.ok) { b1++; n1.push(`fig1 ${presetLabel}: ${r.why}`); } }
+      }
+      const nxt = [...f1.querySelectorAll('button')].find((x) => x.textContent === '\u25b6');
+      if (!nxt) break;
+      nxt.click();
+    }
+  }
+  chk(`figure 1: q label clear of the title on ${c1} scan charts`, b1 === 0,
+    n1.slice(0, 2).join(' | '));
+}
+
 console.log(fails === 0 ? '\nALL TESTS PASSED' : `\n${fails} FAILURE(S)`);
 process.exit(fails === 0 ? 0 : 1);

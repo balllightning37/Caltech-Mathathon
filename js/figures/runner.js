@@ -11,6 +11,7 @@ import {
   h, s, clear, canvas, figure, button, segmented, legend, pill,
   frac, dec, tooltip, hoverable, bar,
 } from '../ui.js';
+import { drawProfile } from '../ballot.js';
 import { makeInstance, findCoreViolation, utilities } from '../election.js';
 import {
   fastCore, preprocess, neighbourhoodSize, reserveBehind, verify,
@@ -437,6 +438,66 @@ export function mountRunnerFigure(host) {
     return panel;
   }
 
+  /* --------------------------------------------- the approval profile */
+
+  /**
+   * The profile, with the committee of the moment highlighted: teal for a
+   * sitting winner, violet for the candidate just added, brick for the one
+   * about to be deleted. On the preprocessing step the high-degree
+   * candidates are outlined instead, since no committee exists yet.
+   */
+  function profileView(step) {
+    const wrap = h('div', { style: 'margin-top:10px' });
+    const committee = step.committee ? [...step.committee] : [];
+    const Wset = new Set(committee);
+    const u = utilities(inst, committee);
+    const high = step.kind === 'preprocess' ? new Set(step.highlightCands || []) : null;
+
+    wrap.appendChild(h('div', { class: 'panel-head', text:
+      step.kind === 'preprocess'
+        ? 'the approval profile — candidates with at least q supporters'
+        : step.committee
+          ? 'the approval profile — candidates currently in the committee'
+          : 'the approval profile' }));
+
+    wrap.appendChild(drawProfile(inst, {
+      W: Wset,
+      tip,
+      rightPad: 64,
+      tint: (c) => {
+        if (step.deleting === c) return { fill: 'var(--brick-soft)', stroke: 'var(--brick-line)' };
+        if (step.added === c || step.picked === c) {
+          return { fill: 'var(--violet-soft)', stroke: 'var(--violet-line)' };
+        }
+        if (high && high.has(c)) return { fill: 'var(--amber-soft)', stroke: 'var(--amber-line)' };
+        return null;
+      },
+      voterNote: (i) => (step.committee ? `u=${u[i]}` : null),
+      annotate: (c) => {
+        if (!step.system || Wset.has(c)) return null;
+        return `r=${dec(reserveBehind(inst, step.system.r, c), 2)}`;
+      },
+    }));
+
+    const key = [];
+    if (step.committee) {
+      key.push({ label: 'in the committee', fill: 'var(--teal-soft)', line: 'var(--teal-line)' });
+    }
+    if (step.picked !== undefined && step.picked !== null) {
+      key.push({ label: 'violates (P3) — about to be added', fill: 'var(--violet-soft)', line: 'var(--violet-line)' });
+    } else if (step.added !== undefined && step.added !== null) {
+      key.push({ label: 'just added', fill: 'var(--violet-soft)', line: 'var(--violet-line)' });
+    }
+    if (step.deleting !== undefined && step.deleting !== null) {
+      key.push({ label: 'about to be deleted', fill: 'var(--brick-soft)', line: 'var(--brick-line)' });
+    }
+    if (high) {
+      key.push({ label: 'at least q supporters', fill: 'var(--amber-soft)', line: 'var(--amber-line)' });
+    }
+    if (key.length) wrap.appendChild(legend(key));
+    return wrap;
+  }
+
   /* ----------------------------------------- the payment system picture */
 
   function paymentView(step) {
@@ -503,12 +564,15 @@ export function mountRunnerFigure(host) {
     }
     if (!losers.length) return null;
     const maxH = Math.max(inst.q * 1.5, ...losers.map((x) => x.held), 0.2);
-    const svg = canvas(560, 26 + losers.length * 13);
-    svg.appendChild(s('text', { x: 0, y: 11, class: 'lbl', 'font-weight': 600 },
+    // The quota label gets its own band under the title, so the two can
+    // never collide however far left the quota line falls.
+    const TITLE_Y = 11, QLABEL_Y = 25, TOP = 29;
+    const svg = canvas(560, TOP + losers.length * 13 + 3);
+    svg.appendChild(s('text', { x: 0, y: TITLE_Y, class: 'lbl', 'font-weight': 600 },
       '(P3): reserve held behind each loser'));
     const x0 = 40, bw = 400;
     losers.forEach((it, j) => {
-      const y = 19 + j * 13;
+      const y = TOP + 2 + j * 13;
       const bad = it.held >= inst.q - 1e-9;
       const picked = it.c === step.picked;
       const g = s('g');
@@ -527,12 +591,17 @@ export function mountRunnerFigure(host) {
     });
     const qx = x0 + (inst.q / maxH) * bw;
     svg.appendChild(s('line', {
-      x1: qx, y1: 14, x2: qx, y2: 19 + losers.length * 13,
+      x1: qx, y1: TOP, x2: qx, y2: TOP + losers.length * 13,
       stroke: 'var(--fg)', 'stroke-dasharray': '3 2',
     }));
+    // Keep the label inside the canvas when the line sits near an edge.
+    const label = `q = ${frac(inst.q)}`;
+    const halfW = label.length * 3;
+    const anchor = qx - halfW < 2 ? 'start' : (qx + halfW > 558 ? 'end' : 'middle');
     svg.appendChild(s('text', {
-      x: qx, y: 11, class: 'lbl-mono', 'text-anchor': 'middle', 'font-size': 9.5,
-    }, `q = ${frac(inst.q)}`));
+      x: anchor === 'start' ? 2 : anchor === 'end' ? 558 : qx,
+      y: QLABEL_Y, class: 'lbl-mono', 'text-anchor': anchor, 'font-size': 9.5,
+    }, label));
     return svg;
   }
 
@@ -614,6 +683,8 @@ export function mountRunnerFigure(host) {
         h('span', {}, [h('b', { text: 'size: ' }), String(step.committee.length)]),
       ]));
     }
+
+    body.appendChild(profileView(step));
 
     const pv = paymentView(step);
     if (pv) body.appendChild(pv);

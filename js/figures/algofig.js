@@ -145,12 +145,15 @@ export function mountAlgorithmFigure(host) {
     }
     if (losers.length) {
       const maxH = Math.max(inst.q * 1.6, ...losers.map((x) => x.held), 0.3);
-      const svg = canvas(PLOT_W, 28 + losers.length * 14);
+      // The quota label sits in its own band under the title, so it can
+      // never collide with it however far left the quota line falls.
+      const QLABEL_Y = 25, TOP = 30;
+      const svg = canvas(PLOT_W, TOP + losers.length * 14 + 3);
       svg.appendChild(s('text', { x: 0, y: 11, class: 'lbl', 'font-weight': 600 },
         'step 2 — reserve held behind each loser   (a quota or more is a (P3) violation)'));
       const x0 = 40, bw = PLOT_W - 120;
       losers.forEach((it, j) => {
-        const y = 20 + j * 14;
+        const y = TOP + 2 + j * 14;
         const bad = it.held >= inst.q - 1e-9;
         const g = s('g');
         g.appendChild(s('text', { x: 0, y: y + 9, class: 'lbl-mono', 'font-size': 9.5 },
@@ -171,12 +174,16 @@ export function mountAlgorithmFigure(host) {
       });
       const qx = x0 + (inst.q / maxH) * bw;
       svg.appendChild(s('line', {
-        x1: qx, y1: 15, x2: qx, y2: 20 + losers.length * 14,
+        x1: qx, y1: TOP, x2: qx, y2: TOP + losers.length * 14,
         stroke: 'var(--fg)', 'stroke-dasharray': '3 2',
       }));
+      const qLabel = `q = ${frac(inst.q)}`;
+      const qHalf = qLabel.length * 3;
+      const qAnchor = qx - qHalf < 2 ? 'start' : (qx + qHalf > PLOT_W - 2 ? 'end' : 'middle');
       svg.appendChild(s('text', {
-        x: qx, y: 12, class: 'lbl-mono', 'text-anchor': 'middle', 'font-size': 9.5,
-      }, `q = ${frac(inst.q)}`));
+        x: qAnchor === 'start' ? 2 : qAnchor === 'end' ? PLOT_W - 2 : qx,
+        y: QLABEL_Y, class: 'lbl-mono', 'text-anchor': qAnchor, 'font-size': 9.5,
+      }, qLabel));
       body.appendChild(svg);
     }
 
